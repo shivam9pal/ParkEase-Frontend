@@ -1,0 +1,19 @@
+import axiosInstance from "./axiosInstance";
+
+export const getAllUsers = (role) =>
+  axiosInstance.get("/api/v1/auth/users", {
+    params: role ? { role } : {},
+  }).catch(err => {
+    console.error("❌ getAllUsers failed:", err.message);
+    console.warn("⚠️ Returning empty user list as fallback");
+    return { data: [] }; // Return empty list if endpoint fails
+  });
+
+export const getUserById = (userId) =>
+  axiosInstance.get(`/api/v1/auth/users/${userId}`);
+
+export const deactivateUser = (userId) =>
+  axiosInstance.put(`/api/v1/auth/users/${userId}/deactivate`);
+
+export const reactivateUser = (userId) =>
+  axiosInstance.put(`/api/v1/auth/users/${userId}/reactivate`);

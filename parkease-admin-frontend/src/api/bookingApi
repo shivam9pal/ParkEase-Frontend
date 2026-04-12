@@ -1,0 +1,13 @@
+import axiosInstance from "./axiosInstance";
+
+export const getAllBookings = () =>
+  axiosInstance.get("/api/v1/bookings/all").catch(err => {
+    console.error("❌ getAllBookings failed:", err.message);
+    return { data: [] }; // Return empty list if endpoint fails
+  });
+
+export const forceCheckout = (bookingId) =>
+  axiosInstance.post(`/api/v1/bookings/${bookingId}/force-checkout`);
+
+export const cancelBooking = (bookingId) =>
+  axiosInstance.post(`/api/v1/bookings/${bookingId}/cancel`);
