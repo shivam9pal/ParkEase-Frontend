@@ -8,6 +8,9 @@ import { Eye, EyeOff, Mail, Lock, LogIn } from 'lucide-react';
 import { login, loginWithGoogle, loginWithGithub } from '../../api/authApi';
 import { useAuthStore } from '../../store/authStore';
 
+// Get frontend URL from environment for OAuth security
+const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+
 // ── Zod validation schema ──────────────────────────────────────────────────────
 const loginSchema = z.object({
   email:    z.string().email('Enter a valid email address'),
@@ -72,17 +75,49 @@ export default function LoginPage() {
 
   // ── OAuth2 popup message listener ─────────────────────────────────────────
   useEffect(() => {
+    let processed = false; // Prevent duplicate handling
+
     const handleMessage = (event) => {
-      if (event.origin !== 'http://localhost:8080') return;
-      const data = event.data;
-      if (data?.accessToken && data?.user) {
-        setAuth(data.accessToken, data.user);
-        toast.success(`Welcome, ${data.user.fullName}! 🎉`);
-        navigate('/driver');
+      if (processed) return; // Skip if already processed
+      
+      // Security: verify origin matches frontend URL
+      if (event.origin !== FRONTEND_URL) {
+        return;
+      }
+
+      const { type, accessToken, user, message } = event.data;
+
+      if (type === 'OAUTH_SUCCESS') {
+        // Validate role is DRIVER
+        if (user.role !== 'DRIVER') {
+          setError('Only DRIVER role can login. Your role: ' + user.role);
+          setShowError(true);
+          return;
+        }
+
+        processed = true; // Mark as processed
+        
+        // Save to Zustand + localStorage
+        setAuth(accessToken, user);
+        toast.success(`Welcome, ${user.fullName}! 🎉`);
+
+        // Navigate to dashboard
+        setTimeout(() => {
+          navigate('/driver', { replace: true });
+        }, 100);
+
+      } else if (type === 'OAUTH_ERROR') {
+        processed = true; // Mark as processed
+        setError('OAuth Error: ' + message);
+        setShowError(true);
       }
     };
+
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
   }, [setAuth, navigate]);
 
   const {
@@ -99,14 +134,28 @@ export default function LoginPage() {
     try {
       const res = await login(data);
       const { accessToken, user } = res.data;
+
+      // ── Check if role is DRIVER ──────────────────────────────────────────
+      if (user.role !== 'DRIVER') {
+        setLoading(false);
+        setError(`This app is for drivers only. Your role: ${user.role}`);
+        setShowError(true);
+        // Do NOT save the token in browser
+        return;
+      }
+
+      // ── Only save auth if role is DRIVER ────────────────────────────────
       setAuth(accessToken, user);
       toast.success(`Welcome back, ${user.fullName}! 🎉`);
+      setLoading(false);
 
-      if (user.role === 'DRIVER')  navigate('/driver');
-      else if (user.role === 'MANAGER') navigate('/manager');
-      else navigate('/admin');
+      // Small delay to ensure state updates before navigation
+      setTimeout(() => {
+        navigate('/driver', { replace: true });
+      }, 100);
 
     } catch (err) {
+      setLoading(false);
       const status = err.response?.status;
       const msg    = err.response?.data?.message;
       if (status === 401) {
@@ -115,7 +164,6 @@ export default function LoginPage() {
         setError(msg ?? 'Login failed. Please try again.');
       }
       setShowError(true);
-      setLoading(false);
     }
   };
 

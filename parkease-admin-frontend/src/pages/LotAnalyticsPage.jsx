@@ -15,6 +15,7 @@ import {
   getLotOccupancyTrend,
 } from "../api/analyticsApi";
 import { formatCurrency, formatDate, formatPercent } from "../utils/formatters";
+import logger from "../utils/logger";
 import PageHeader from "../components/shared/PageHeader";
 import StatCard from "../components/shared/StatCard";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
@@ -91,22 +92,22 @@ export default function LotAnalyticsPage() {
       setLotsLoading(true);
       try {
         const res = await getAllLots();
-        console.log("🔍 getAllLots response:", res.data); // DEBUG LOG
+        logger.log("🔍 getAllLots response:", res.data); // DEBUG LOG
         
         // Filter for approved lots only
         const allLots = res.data ?? [];
-        console.log("📋 Total lots:", allLots.length);
-        console.log("First lot structure:", allLots[0]); // See actual structure
+        logger.log("📋 Total lots:", allLots.length);
+        logger.log("First lot structure:", allLots[0]); // See actual structure
         
         const approvedLots = allLots.filter((l) => l.isApproved === true);
-        console.log("✅ Approved lots:", approvedLots.length);
+        logger.log("✅ Approved lots:", approvedLots.length);
         
         setLots(approvedLots);
         if (approvedLots.length > 0) {
           setSelectedLotId(approvedLots[0].lotId);
         }
       } catch (err) {
-        console.error("❌ getAllLots error:", err);
+        logger.error("❌ getAllLots error:", err);
         toast.error("Failed to load parking lots");
       } finally {
         setLotsLoading(false);
@@ -124,8 +125,7 @@ export default function LotAnalyticsPage() {
       const periodStart = revenueData.periodStart || new Date().toISOString().split('T')[0];
       const periodEnd = revenueData.periodEnd || new Date().toISOString().split('T')[0];
       
-      console.log(`💰 Lot Revenue: ₹${revenueData.totalRevenue} (Period: ${periodStart} to ${periodEnd})`);
-      
+      logger.log(`💰 Lot Revenue: ₹${revenueData.totalRevenue} (Period: ${periodStart} to ${periodEnd})`);      
       // Return single data point
       return [{
         date: periodStart.split('T')[0],
@@ -133,7 +133,7 @@ export default function LotAnalyticsPage() {
       }];
     }
     
-    console.warn("⚠️ Revenue data format unrecognized:", revenueData);
+    logger.warn("⚠️ Revenue data format unrecognized:", revenueData);
     return [];
   };
 
@@ -142,7 +142,7 @@ export default function LotAnalyticsPage() {
     if (Array.isArray(occupancyData)) return occupancyData;
     
     if (occupancyData && Array.isArray(occupancyData.hourlyBreakdown)) {
-      console.log(`📊 Lot Occupancy (Hourly): ${occupancyData.hourlyBreakdown.length} hours available`);
+      logger.log(`📊 Lot Occupancy (Hourly): ${occupancyData.hourlyBreakdown.length} hours available`);
       
       return occupancyData.hourlyBreakdown.map((item) => {
         const hour = String(item.hour).padStart(2, '0');
@@ -153,7 +153,7 @@ export default function LotAnalyticsPage() {
       });
     }
     
-    console.warn("⚠️ Occupancy data format unrecognized:", occupancyData);
+    logger.warn("⚠️ Occupancy data format unrecognized:", occupancyData);
     return [];
   };
 
@@ -177,12 +177,12 @@ export default function LotAnalyticsPage() {
       setRevenueTrend(transformedRevenue);
       setOccupancy(transformedOccupancy);
       
-      console.log("✅ Lot analytics loaded successfully");
-      console.log("📊 Summary:", summaryRes.data);
-      console.log("📈 Revenue Trend:", transformedRevenue);
-      console.log("📉 Occupancy:", transformedOccupancy);
+      logger.log("✅ Lot analytics loaded successfully");
+      logger.log("📊 Summary:", summaryRes.data);
+      logger.log("📈 Revenue Trend:", transformedRevenue);
+      logger.log("📉 Occupancy:", transformedOccupancy);
     } catch (err) {
-      console.error("❌ Lot analytics error:", err);
+      logger.error("❌ Lot analytics error:", err);
       toast.error("Failed to load lot analytics");
     } finally {
       setDataLoading(false);

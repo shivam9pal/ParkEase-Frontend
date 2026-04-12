@@ -1,4 +1,5 @@
 import axiosInstance from "./axiosInstance";
+import logger from "../utils/logger";
 
 /**
  * Get all users with optional role filter
@@ -10,13 +11,13 @@ export const getAllUsers = (role = null) => {
   return axiosInstance
     .get("/api/v1/auth/users", { params })
     .then((res) => {
-      console.log("✅ getAllUsers successful, count:", res.data?.length ?? 0);
+      logger.log("✅ getAllUsers successful, count:", res.data?.length ?? 0);
       return res;
     })
     .catch((err) => {
-      console.error("❌ getAllUsers failed:", err.message);
-      console.error("  Status:", err.response?.status);
-      console.error("  Data:", err.response?.data);
+      logger.error("❌ getAllUsers failed:", err.message);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
       throw err;
     });
 };
@@ -27,17 +28,17 @@ export const getAllUsers = (role = null) => {
  * @returns Promise<AxiosResponse> with UserProfileResponse (isActive=false)
  */
 export const deactivateUser = (userId) => {
-  console.log("📤 Deactivating user:", userId);
+  logger.log("📤 Deactivating user:", userId);
   return axiosInstance
     .put(`/api/v1/auth/users/${userId}/deactivate`)
     .then((res) => {
-      console.log("✅ User deactivated successfully:", res.data);
+      logger.log("✅ User deactivated successfully:", res.data);
       return res;
     })
     .catch((err) => {
-      console.error("❌ Deactivate user failed:", err.message);
-      console.error("  Status:", err.response?.status);
-      console.error("  Data:", err.response?.data);
+      logger.error("❌ Deactivate user failed:", err.message);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
       throw err;
     });
 };
@@ -48,17 +49,17 @@ export const deactivateUser = (userId) => {
  * @returns Promise<AxiosResponse> with UserProfileResponse (isActive=true)
  */
 export const reactivateUser = (userId) => {
-  console.log("📤 Reactivating user:", userId);
+  logger.log("📤 Reactivating user:", userId);
   return axiosInstance
     .put(`/api/v1/auth/users/${userId}/reactivate`)
     .then((res) => {
-      console.log("✅ User reactivated successfully:", res.data);
+      logger.log("✅ User reactivated successfully:", res.data);
       return res;
     })
     .catch((err) => {
-      console.error("❌ Reactivate user failed:", err.message);
-      console.error("  Status:", err.response?.status);
-      console.error("  Data:", err.response?.data);
+      logger.error("❌ Reactivate user failed:", err.message);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
       throw err;
     });
 };

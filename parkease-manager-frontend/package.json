@@ -1,13 +1,20 @@
 {
   "name": "parkease-manager-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "ParkEase Manager Frontend - Parking lot management dashboard",
+  "author": "ParkEase Team",
+  "license": "ISC",
   "scripts": {
     "dev": "vite",
+    "dev:https": "vite --https",
     "build": "vite build",
+    "build:preview": "vite build && vite preview",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "lint:fix": "eslint . --fix",
+    "preview": "vite preview",
+    "type-check": "echo 'Type checking not configured for JavaScript project'"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

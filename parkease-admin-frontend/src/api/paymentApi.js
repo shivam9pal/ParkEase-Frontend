@@ -1,4 +1,5 @@
 import axiosInstance from "./axiosInstance";
+import logger from "../utils/logger";
 
 /**
  * Calculate date range based on period
@@ -34,11 +35,11 @@ export const getAllPayments = () =>
   axiosInstance
     .get("/api/v1/payments/all")
     .then((res) => {
-      console.log("✅ getAllPayments successful, count:", Array.isArray(res.data) ? res.data.length : 0);
+      logger.log("✅ getAllPayments successful, count:", Array.isArray(res.data) ? res.data.length : 0);
       return res;
     })
     .catch((err) => {
-      console.error("❌ getAllPayments failed:", err.message);
+      logger.error("❌ getAllPayments failed:", err.message);
       return { data: [] }; // Return empty list if endpoint fails
     });
 
@@ -49,13 +50,13 @@ export const getAllPayments = () =>
  */
 export const getPlatformRevenue = (period = "WEEKLY") => {
   const { from, to } = getDateRange(period);
-  console.log(`📤 Fetching platform revenue for ${period}: ${from} to ${to}`);
+  logger.log(`📤 Fetching platform revenue for ${period}: ${from} to ${to}`);
   return axiosInstance
     .get("/api/v1/payments/revenue/platform", {
       params: { from, to },
     })
     .then((res) => {
-      console.log("✅ getPlatformRevenue successful");
+      logger.log("✅ getPlatformRevenue successful");
       // Ensure consistent response structure
       if (Array.isArray(res.data)) {
         return { data: res.data };
@@ -63,7 +64,7 @@ export const getPlatformRevenue = (period = "WEEKLY") => {
       return res;
     })
     .catch((err) => {
-      console.error("❌ getPlatformRevenue failed:", err.message);
+      logger.error("❌ getPlatformRevenue failed:", err.message);
       return { data: { totalRevenue: 0, currency: "INR", transactionCount: 0 } };
     });
 };

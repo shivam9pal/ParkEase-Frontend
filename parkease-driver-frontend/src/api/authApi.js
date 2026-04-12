@@ -1,5 +1,8 @@
 import api from './axiosInstance';
 
+// Get backend API URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 // POST /api/v1/auth/register
 // Body: { fullName, email, password, phone, role: "DRIVER", vehiclePlate }
 // Response 201: UserProfileResponse (no token — must login after)
@@ -69,7 +72,7 @@ export const resetPassword = (email, newPassword) =>
 
 export const loginWithGoogle = () => {
   window.open(
-    'http://localhost:8080/oauth2/authorization/google',
+    `${API_BASE_URL}/oauth2/authorization/google`,
     'oauth2-popup',
     'width=500,height=600,scrollbars=yes'
   );
@@ -77,7 +80,7 @@ export const loginWithGoogle = () => {
 
 export const loginWithGithub = () => {
   window.open(
-    'http://localhost:8080/oauth2/authorization/github',
+    `${API_BASE_URL}/oauth2/authorization/github`,
     'oauth2-popup',
     'width=500,height=600,scrollbars=yes'
   );

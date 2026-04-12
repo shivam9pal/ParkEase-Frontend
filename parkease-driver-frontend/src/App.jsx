@@ -12,6 +12,7 @@ import ForgotPasswordPage from './pages/public/ForgotPasswordPage';
 import ExploreParkingPage from './pages/public/ExploreParkingPage';
 import PublicLotDetailPage from './pages/public/PublicLotDetailPage';
 import PublicSpotDetailPage from './pages/public/PublicSpotDetailPage';
+import OAuthCallback from './pages/public/OAuthCallback';
 
 // Driver Pages
 import DriverDashboard from './pages/driver/DriverDashboard';
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
         <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
 
         {/* Driver Routes — Protected + Role-Guarded */}
         <Route element={<ProtectedRoute />}>

@@ -1,15 +1,16 @@
 import axiosInstance from "./axiosInstance";
+import logger from "../utils/logger";
 
 export const adminLogin = (email, password) => {
-  console.log("📤 Calling admin login endpoint with email:", email);
+  logger.log("📤 Calling admin login endpoint with email:", email);
   return axiosInstance
     .post("/api/v1/auth/admin/login", { email, password })
     .then(res => {
-      console.log("✅ Admin login successful, response:", res.data);
+      logger.log("✅ Admin login successful, response:", res.data);
       return res;
     })
     .catch(err => {
-      console.error("❌ Admin login failed:", {
+      logger.error("❌ Admin login failed:", {
         status: err.response?.status,
         statusText: err.response?.statusText,
         data: err.response?.data,
@@ -21,12 +22,12 @@ export const adminLogin = (email, password) => {
 
 export const getAllAdmins = () =>
   axiosInstance.get("/api/v1/auth/admin/all").then(res => {
-    console.log("✅ getAllAdmins successful, count:", res.data?.length ?? 0);
+    logger.log("✅ getAllAdmins successful, count:", res.data?.length ?? 0);
     return res;
   }).catch(err => {
-    console.error("❌ getAllAdmins failed:", err.message);
-    console.error("  Status:", err.response?.status);
-    console.error("  Data:", err.response?.data);
+    logger.error("❌ getAllAdmins failed:", err.message);
+    logger.error("  Status:", err.response?.status);
+    logger.error("  Data:", err.response?.data);
     throw err;
   });
 
@@ -38,10 +39,10 @@ export const deleteAdmin = (adminId) =>
 
 export const reactivateAdmin = (adminId) =>
   axiosInstance.put(`/api/v1/auth/admin/${adminId}/reactivate`).then(res => {
-    console.log("✅ Admin reactivated successfully:", res.data.fullName);
+    logger.log("✅ Admin reactivated successfully:", res.data.fullName);
     return res;
   }).catch(err => {
-    console.error("❌ Reactivate failed:", err.response?.data?.message || err.message);
+    logger.error("❌ Reactivate failed:", err.response?.data?.message || err.message);
     throw err;
   });
   

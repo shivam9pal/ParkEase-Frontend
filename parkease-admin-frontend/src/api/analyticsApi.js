@@ -1,24 +1,25 @@
 import axiosInstance from "./axiosInstance";
+import logger from "../utils/logger";
 
 export const getPlatformSummary = () =>
   axiosInstance.get("/api/v1/analytics/platform/summary").catch(err => {
-    console.error("❌ getPlatformSummary failed:", err.message);
+    logger.error("❌ getPlatformSummary failed:", err.message);
     throw err;
   });
 
 // ⚠️ NOTE: /api/v1/analytics/platform/occupancy does NOT exist in spec
 // This endpoint is a fallback - if it exists on backend, remove the mock
 export const getPlatformOccupancy = (period = "WEEKLY") => {
-  console.warn(`⚠️ Fetching occupancy data for period: ${period}`);
+  logger.warn(`⚠️ Fetching occupancy data for period: ${period}`);
   return axiosInstance
     .get("/api/v1/analytics/platform/occupancy", { params: { period } })
     .then(res => {
-      console.log("✅ Platform occupancy fetched successfully");
+      logger.log("✅ Platform occupancy fetched successfully");
       return res;
     })
     .catch(err => {
-      console.warn(`⚠️ /api/v1/analytics/platform/occupancy endpoint not available - using mock data`);
-      console.warn("  Error:", err.message);
+      logger.warn(`⚠️ /api/v1/analytics/platform/occupancy endpoint not available - using mock data`);
+      logger.warn("  Error:", err.message);
       // Mock data as fallback
       const mockOccupancy = [
         { date: "Mon", occupancyRate: 65 },
@@ -54,9 +55,9 @@ export const getPlatformRevenueTrend = (from, to) => {
     toDate.setHours(23, 59, 59, 999);
   }
   
-  console.log(`📊 Fetching platform revenue trend`);
-  console.log(`   From: ${fromDate.toISOString()}`);
-  console.log(`   To: ${toDate.toISOString()}`);
+  logger.log(`📊 Fetching platform revenue trend`);
+  logger.log(`   From: ${fromDate.toISOString()}`);
+  logger.log(`   To: ${toDate.toISOString()}`);
   
   return axiosInstance
     .get("/api/v1/payments/revenue/platform", {
@@ -66,13 +67,13 @@ export const getPlatformRevenueTrend = (from, to) => {
       },
     })
     .then(res => {
-      console.log("✅ Platform revenue trend fetched successfully", res.data);
+      logger.log("✅ Platform revenue trend fetched successfully", res.data);
       return res;
     })
     .catch(err => {
-      console.warn(`⚠️ /api/v1/payments/revenue/platform failed - using mock data`);
-      console.warn("  Error:", err.message);
-      console.warn("  Status:", err.response?.status);
+      logger.warn(`⚠️ /api/v1/payments/revenue/platform failed - using mock data`);
+      logger.warn("  Error:", err.message);
+      logger.warn("  Status:", err.response?.status);
       // Mock data for revenue trend as fallback
       const mockRevenue = [
         { date: "2026-04-05", revenue: 15000 },

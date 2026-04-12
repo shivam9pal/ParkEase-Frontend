@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { getPlatformSummary, getPlatformRevenueTrend, getPlatformOccupancy } from "../api/analyticsApi";
 import { formatCurrency, formatDate, formatPercent } from "../utils/formatters";
+import logger from "../utils/logger";
 import StatCard from "../components/shared/StatCard";
 import PageHeader from "../components/shared/PageHeader";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
@@ -77,8 +78,8 @@ export default function DashboardPage() {
     if (revenueData && typeof revenueData.totalRevenue === 'number') {
       const revAmount = revenueData.totalRevenue || 0;
       
-      console.log(`💰 Revenue total: ₹${revAmount}`);
-      console.log(`📊 API Response:`, { totalRevenue: revenueData.totalRevenue, currency: revenueData.currency, transactionCount: revenueData.transactionCount, from: revenueFromDate, to: revenueToDate });
+      logger.log(`💰 Revenue total: ₹${revAmount}`);
+      logger.log(`📊 API Response:`, { totalRevenue: revenueData.totalRevenue, currency: revenueData.currency, transactionCount: revenueData.transactionCount, from: revenueFromDate, to: revenueToDate });
       
       // Return single data point with total revenue for the date range
       return [{
@@ -87,7 +88,7 @@ export default function DashboardPage() {
       }];
     }
     
-    console.warn("⚠️ Revenue data format unrecognized:", revenueData);
+    logger.warn("⚠️ Revenue data format unrecognized:", revenueData);
     return [];
   };
 
@@ -97,7 +98,7 @@ export default function DashboardPage() {
     
     // Use hourly breakdown from API response
     if (occupancyData && Array.isArray(occupancyData.hourlyBreakdown)) {
-      console.log(`📊 Occupancy data (Hourly): ${occupancyData.hourlyBreakdown.length} hours available`);
+      logger.log(`📊 Occupancy data (Hourly): ${occupancyData.hourlyBreakdown.length} hours available`);
       
       return occupancyData.hourlyBreakdown.map((item) => {
         const hour = String(item.hour).padStart(2, '0');
@@ -108,7 +109,7 @@ export default function DashboardPage() {
       });
     }
     
-    console.warn("⚠️ Occupancy data format unrecognized:", occupancyData);
+    logger.warn("⚠️ Occupancy data format unrecognized:", occupancyData);
     return [];
   };
 
@@ -152,9 +153,9 @@ export default function DashboardPage() {
       ]);
       
       // 🔍 DEBUG: Log raw API responses
-      console.log("🔴 RAW Summary Response:", summaryRes.data);
-      console.log("🔴 RAW Revenue Response:", revenueRes.data);
-      console.log("🔴 RAW Occupancy Response:", occupancyRes.data);
+      logger.log("🔴 RAW Summary Response:", summaryRes.data);
+      logger.log("🔴 RAW Revenue Response:", revenueRes.data);
+      logger.log("🔴 RAW Occupancy Response:", occupancyRes.data);
       
       // Transform and enrich data
       const enrichedSummary = enrichSummary(summaryRes.data, occupancyRes.data);
@@ -165,12 +166,12 @@ export default function DashboardPage() {
       setRevenueTrend(transformedRevenue);
       setOccupancy(transformedOccupancy);
       
-      console.log("✅ Dashboard data loaded successfully");
-      console.log("📊 Enriched Summary:", enrichedSummary);
-      console.log("📊 Transformed Revenue:", transformedRevenue);
-      console.log("📊 Transformed Occupancy:", transformedOccupancy);
+      logger.log("✅ Dashboard data loaded successfully");
+      logger.log("📊 Enriched Summary:", enrichedSummary);
+      logger.log("📊 Transformed Revenue:", transformedRevenue);
+      logger.log("📊 Transformed Occupancy:", transformedOccupancy);
     } catch (err) {
-      console.error("❌ Dashboard fetch error:", err);
+      logger.error("❌ Dashboard fetch error:", err);
       toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);

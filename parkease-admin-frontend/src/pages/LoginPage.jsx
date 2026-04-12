@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, ParkingMeter, AlertCircle, Lock, Mail } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { adminLogin } from "../api/authApi";
+import logger from "../utils/logger";
 
 const loginSchema = z.object({
   email: z
@@ -34,38 +35,38 @@ export default function LoginPage() {
     setLoading(true);
     setServerError("");
     try {
-      console.log("🔐 Attempting login with email:", data.email);
+      logger.log("🔐 Attempting login with email:", data.email);
       const res = await adminLogin(data.email, data.password);
-      console.log("✅ Login response received:", res.data);
+      logger.log("✅ Login response received:", res.data);
       
       if (!res.data?.accessToken) {
-        console.error("❌ No accessToken in response!");
+        logger.error("❌ No accessToken in response!");
         setServerError("Invalid login response - no token received");
         return;
       }
       
       const { accessToken, ...adminProfile } = res.data;
-      console.log("📝 Token first 20 chars:", accessToken?.substring(0, 20) + "...");
-      console.log("👤 Admin Profile:", adminProfile);
+      logger.log("📝 Token first 20 chars:", accessToken?.substring(0, 20) + "...");
+      logger.log("👤 Admin Profile:", adminProfile);
       
       login(accessToken, adminProfile);
-      console.log("✅ Token stored in auth store");
+      logger.log("✅ Token stored in auth store");
       
       // Verify token was actually stored
       const storedToken = useAuthStore.getState().token;
       if (!storedToken) {
-        console.error("❌ Token failed to store in auth store!");
+        logger.error("❌ Token failed to store in auth store!");
         setServerError("Failed to store authentication token");
         return;
       }
       
-      console.log("✅ Token verified in store, navigating to dashboard");
+      logger.log("✅ Token verified in store, navigating to dashboard");
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      console.error("❌ Login error:", err);
-      console.error("  Status:", err.response?.status);
-      console.error("  Data:", err.response?.data);
-      console.error("  Message:", err.message);
+      logger.error("❌ Login error:", err);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
+      logger.error("  Message:", err.message);
       
       const msg = err.response?.data?.message || err.response?.data || err.message || "";
       const msgStr = typeof msg === "string" ? msg : JSON.stringify(msg);

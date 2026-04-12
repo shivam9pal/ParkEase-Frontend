@@ -1,21 +1,22 @@
 import axiosInstance from "./axiosInstance";
+import logger from "../utils/logger";
 
 /**
  * Get all parking lots (approved and pending)
  * @returns Promise<AxiosResponse> with List<LotResponse>
  */
 export const getAllLots = () => {
-  console.log("📤 Fetching all parking lots");
+  logger.log("📤 Fetching all parking lots");
   return axiosInstance
     .get("/api/v1/lots/all")
     .then((res) => {
-      console.log("✅ getAllLots successful, count:", res.data?.length ?? 0);
+      logger.log("✅ getAllLots successful, count:", res.data?.length ?? 0);
       return res;
     })
     .catch((err) => {
-      console.error("❌ getAllLots failed:", err.message);
-      console.error("  Status:", err.response?.status);
-      console.error("  Data:", err.response?.data);
+      logger.error("❌ getAllLots failed:", err.message);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
       throw err;
     });
 };
@@ -25,17 +26,17 @@ export const getAllLots = () => {
  * @returns Promise<AxiosResponse> with List<LotResponse>
  */
 export const getPendingLots = () => {
-  console.log("📤 Fetching pending parking lots");
+  logger.log("📤 Fetching pending parking lots");
   return axiosInstance
     .get("/api/v1/lots/pending")
     .then((res) => {
-      console.log("✅ getPendingLots successful, count:", res.data?.length ?? 0);
+      logger.log("✅ getPendingLots successful, count:", res.data?.length ?? 0);
       return res;
     })
     .catch((err) => {
-      console.error("❌ getPendingLots failed:", err.message);
-      console.error("  Status:", err.response?.status);
-      console.error("  Data:", err.response?.data);
+      logger.error("❌ getPendingLots failed:", err.message);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
       throw err;
     });
 };
@@ -46,17 +47,17 @@ export const getPendingLots = () => {
  * @returns Promise<AxiosResponse> with LotResponse (isApproved=true)
  */
 export const approveLot = (lotId) => {
-  console.log("📤 Approving parking lot:", lotId);
+  logger.log("📤 Approving parking lot:", lotId);
   return axiosInstance
     .put(`/api/v1/lots/${lotId}/approve`)
     .then((res) => {
-      console.log("✅ Lot approved successfully:", res.data);
+      logger.log("✅ Lot approved successfully:", res.data);
       return res;
     })
     .catch((err) => {
-      console.error("❌ Approve lot failed:", err.message);
-      console.error("  Status:", err.response?.status);
-      console.error("  Data:", err.response?.data);
+      logger.error("❌ Approve lot failed:", err.message);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
       throw err;
     });
 };
@@ -67,17 +68,17 @@ export const approveLot = (lotId) => {
  * @returns Promise<AxiosResponse> with success message or LotResponse
  */
 export const deactivateLot = (lotId) => {
-  console.log("📤 Deactivating parking lot:", lotId);
+  logger.log("📤 Deactivating parking lot:", lotId);
   return axiosInstance
     .delete(`/api/v1/lots/${lotId}`)
     .then((res) => {
-      console.log("✅ Lot deactivated successfully");
+      logger.log("✅ Lot deactivated successfully");
       return res;
     })
     .catch((err) => {
-      console.error("❌ Deactivate lot failed:", err.message);
-      console.error("  Status:", err.response?.status);
-      console.error("  Data:", err.response?.data);
+      logger.error("❌ Deactivate lot failed:", err.message);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
       throw err;
     });
 };

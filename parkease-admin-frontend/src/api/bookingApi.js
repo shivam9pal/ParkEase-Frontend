@@ -1,21 +1,22 @@
 import axiosInstance from "./axiosInstance";
+import logger from "../utils/logger";
 
 /**
  * Get all bookings across the platform
  * @returns Promise<AxiosResponse> with List<BookingResponse>
  */
 export const getAllBookings = () => {
-  console.log("📤 Fetching all bookings");
+  logger.log("📤 Fetching all bookings");
   return axiosInstance
     .get("/api/v1/bookings/all")
     .then((res) => {
-      console.log("✅ getAllBookings successful, count:", res.data?.length ?? 0);
+      logger.log("✅ getAllBookings successful, count:", res.data?.length ?? 0);
       return res;
     })
     .catch((err) => {
-      console.error("❌ getAllBookings failed:", err.message);
-      console.error("  Status:", err.response?.status);
-      console.error("  Data:", err.response?.data);
+      logger.error("❌ getAllBookings failed:", err.message);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
       throw err;
     });
 };
@@ -26,17 +27,17 @@ export const getAllBookings = () => {
  * @returns Promise<AxiosResponse> with updated BookingResponse
  */
 export const forceCheckout = (bookingId) => {
-  console.log("📤 Force checking out booking:", bookingId);
+  logger.log("📤 Force checking out booking:", bookingId);
   return axiosInstance
     .put(`/api/v1/bookings/${bookingId}/checkout`)
     .then((res) => {
-      console.log("✅ Booking force checked out successfully:", res.data);
+      logger.log("✅ Booking force checked out successfully:", res.data);
       return res;
     })
     .catch((err) => {
-      console.error("❌ Force checkout failed:", err.message);
-      console.error("  Status:", err.response?.status);
-      console.error("  Data:", err.response?.data);
+      logger.error("❌ Force checkout failed:", err.message);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
       throw err;
     });
 };
@@ -47,17 +48,17 @@ export const forceCheckout = (bookingId) => {
  * @returns Promise<AxiosResponse> with updated BookingResponse (status=CANCELLED)
  */
 export const cancelBooking = (bookingId) => {
-  console.log("📤 Cancelling booking:", bookingId);
+  logger.log("📤 Cancelling booking:", bookingId);
   return axiosInstance
     .put(`/api/v1/bookings/${bookingId}/cancel`)
     .then((res) => {
-      console.log("✅ Booking cancelled successfully:", res.data);
+      logger.log("✅ Booking cancelled successfully:", res.data);
       return res;
     })
     .catch((err) => {
-      console.error("❌ Cancel booking failed:", err.message);
-      console.error("  Status:", err.response?.status);
-      console.error("  Data:", err.response?.data);
+      logger.error("❌ Cancel booking failed:", err.message);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
       throw err;
     });
 };

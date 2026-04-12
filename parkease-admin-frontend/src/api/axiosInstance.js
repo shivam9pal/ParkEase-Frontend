@@ -1,8 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
-
-// DEBUG: Log the base URL on startup
-console.log("🔍 VITE_API_BASE_URL:", import.meta.env.VITE_API_BASE_URL);
+import logger from "../utils/logger";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -16,9 +14,9 @@ axiosInstance.interceptors.request.use(
     const token = useAuthStore.getState().token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log(`📤 SENDING: ${config.method.toUpperCase()} ${config.url} with JWT`);
+      logger.log(`📤 SENDING: ${config.method.toUpperCase()} ${config.url} with JWT`);
     } else {
-      console.log(`📤 SENDING: ${config.method.toUpperCase()} ${config.url} (NO JWT)`);
+      logger.log(`📤 SENDING: ${config.method.toUpperCase()} ${config.url} (NO JWT)`);
     }
     return config;
   },

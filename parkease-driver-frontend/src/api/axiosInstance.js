@@ -24,7 +24,8 @@ api.interceptors.response.use(
       const isLoginRequest = requestUrl.includes('/api/v1/auth/login');
       if (!isLoginRequest) {
         useAuthStore.getState().logout();
-        window.location.href = '/auth/login';
+        // Use window.location.origin to work in both dev and production
+        window.location.href = window.location.origin + '/auth/login';
       }
     }
     return Promise.reject(error);

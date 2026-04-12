@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Users, UserCheck, UserX, RefreshCw } from "lucide-react";
 import { getAllUsers, deactivateUser, reactivateUser } from "../api/userApi";
 import { formatDateTime, truncateId } from "../utils/formatters";
+import logger from "../utils/logger";
 import PageHeader from "../components/shared/PageHeader";
 import DataTable from "../components/shared/DataTable";
 import Badge from "../components/shared/Badge";
@@ -59,10 +60,10 @@ export default function UserManagementPage() {
       const data = res.data ?? [];
       setUsers(Array.isArray(data) ? data : []);
       if ((!data || data.length === 0) && !loading) {
-        console.warn("⚠️ No users returned from API");
+        logger.warn("⚠️ No users returned from API");
       }
     } catch (err) {
-      console.error("❌ User fetch error:", err.message);
+      logger.error("❌ User fetch error:", err.message);
       toast.error("Failed to load users");
     } finally {
       setLoading(false);

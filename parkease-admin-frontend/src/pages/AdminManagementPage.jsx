@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { getAllAdmins, createAdmin, deleteAdmin, reactivateAdmin } from "../api/authApi";
 import { formatDateTime, truncateId } from "../utils/formatters";
+import logger from "../utils/logger";
 import PageHeader from "../components/shared/PageHeader";
 import DataTable from "../components/shared/DataTable";
 import Badge from "../components/shared/Badge";
@@ -246,10 +247,10 @@ export default function AdminManagementPage() {
       const data = res.data ?? [];
       setAdmins(Array.isArray(data) ? data : []);
       if ((!data || data.length === 0) && !loading) {
-        console.warn("⚠️ No admins returned from API");
+        logger.warn("⚠️ No admins returned from API");
       }
     } catch (err) {
-      console.error("❌ Admin fetch error:", err.message);
+      logger.error("❌ Admin fetch error:", err.message);
       toast.error("Failed to load admins");
     } finally {
       setLoading(false);
