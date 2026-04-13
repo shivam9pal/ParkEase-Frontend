@@ -5,12 +5,13 @@ import { z } from 'zod';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { MapPin, Navigation, ImageIcon, Clock, Hash } from 'lucide-react';
+import { MapPin, Navigation, ImageIcon, Clock, Hash, AlertTriangle, X } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import toast from 'react-hot-toast';
 import { createLot, updateLot } from '../../api/lotApi';
+import { uploadProfilePicture } from '../../api/authApi';
 
 // Fix Leaflet default icon broken in Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -55,6 +56,12 @@ export default function LotFormModal({ mode = 'create', lot, onClose, onSuccess 
   const [geoLoading, setGeoLoading]   = useState(false);
   const [markerPos, setMarkerPos]     = useState(null);
   const isEdit                        = mode === 'edit';
+
+  // ── File upload states ────────────────────────────────────────────────────
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [fileError, setFileError] = useState(null);
 
   const {
     register,
@@ -122,16 +129,71 @@ export default function LotFormModal({ mode = 'create', lot, onClose, onSuccess 
     setMarkerPos([lat, lng]);
   };
 
+  // ── Handle file selection ────────────────────────────────────────────────
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    console.log('[LotFormModal] File selected:', file?.name, 'Size:', file?.size, 'Type:', file?.type);
+    if (!file) {
+      console.log('[LotFormModal] No file provided in input');
+      return;
+    }
+
+    // Validate file
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (file.size > maxSize) {
+      console.log('[LotFormModal] File too large:', file.size, 'bytes');
+      setFileError('File size must be less than 10MB');
+      setSelectedFile(null);
+      setFilePreview(null);
+      return;
+    }
+
+    if (!validTypes.includes(file.type)) {
+      console.log('[LotFormModal] Invalid file type:', file.type);
+      setFileError('Only JPG, PNG, and WebP images are allowed');
+      setSelectedFile(null);
+      setFilePreview(null);
+      return;
+    }
+
+    console.log('[LotFormModal] File validation passed, setting selectedFile');
+    setFileError(null);
+    setSelectedFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      console.log('[LotFormModal] Preview created, length:', e.target?.result?.length);
+      setFilePreview(e.target?.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   // ── Submit ────────────────────────────────────────────────────────
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      // Convert HH:MM → HH:MM:SS for backend
+      let lotImageUrl = null;
+
+      // Step 1: Upload image if selected (for create mode)
+      if (!isEdit && selectedFile) {
+        console.log('[LotFormModal] 🚀 Uploading lot image...');
+        setUploadingFile(true);
+        const uploadRes = await uploadProfilePicture(selectedFile);
+        console.log('[LotFormModal] ✅ Upload successful!', uploadRes.data);
+        lotImageUrl = uploadRes.data?.profilePicUrl || null;
+        toast.success('Lot image uploaded! 📸');
+      }
+
+      // Step 2: Create or update lot with image URL
+      console.log('[LotFormModal] 📝 Creating/updating lot with imageUrl:', lotImageUrl);
       const payload = {
         ...data,
         openTime : `${data.openTime}:00`,
         closeTime: `${data.closeTime}:00`,
-        imageUrl : data.imageUrl || null,
+        imageUrl : lotImageUrl,
       };
 
       let res;
@@ -148,6 +210,7 @@ export default function LotFormModal({ mode = 'create', lot, onClose, onSuccess 
       onSuccess(res.data);
 
     } catch (err) {
+      console.error('[LotFormModal] ❌ Error:', err);
       const msg = err.response?.data?.message ?? '';
       if (err.response?.status === 403) {
         toast.error('You can only manage your own lots.');
@@ -158,6 +221,7 @@ export default function LotFormModal({ mode = 'create', lot, onClose, onSuccess 
       }
     } finally {
       setLoading(false);
+      setUploadingFile(false);
     }
   };
 
@@ -339,30 +403,92 @@ export default function LotFormModal({ mode = 'create', lot, onClose, onSuccess 
             </div>
           </div>
 
-          {/* ── Row 6: Image URL ── */}
-          <div>
-            <label className="label">
-              <ImageIcon size={13} className="inline mr-1" />
-              Image URL
-              <span className="text-muted font-normal ml-1">(optional — S3 URL)</span>
-            </label>
-            <input
-              {...register('imageUrl')}
-              type="url"
-              placeholder="https://your-s3-bucket.com/lot-image.jpg"
-              className={`input-field ${errors.imageUrl ? 'border-red-400' : ''}`}
-            />
-            {errors.imageUrl && (
-              <p className="text-xs text-red-500 mt-1">{errors.imageUrl.message}</p>
-            )}
-          </div>
+          {/* ── Row 6: Lot Image Upload ── */}
+          {!isEdit && (
+            <div>
+              <label className="label">
+                <ImageIcon size={13} className="inline mr-1" />
+                Lot Image
+                <span className="text-muted font-normal ml-1">(optional — JPG, PNG, WebP • Max 10MB)</span>
+              </label>
+
+              {/* File input and preview */}
+              <div className="space-y-3">
+                {/* Preview */}
+                {filePreview ? (
+                  <div className="relative h-40 w-40 mx-auto">
+                    <img
+                      src={filePreview}
+                      alt="Lot Preview"
+                      className="w-full h-full rounded-xl object-cover 
+                                 border-4 border-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedFile(null);
+                        setFilePreview(null);
+                        setFileError(null);
+                      }}
+                      className="absolute -top-2 -right-2 w-6 h-6 
+                                 bg-red-400 rounded-full flex items-center 
+                                 justify-center text-white font-bold hover:bg-red-500"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : null}
+
+                {/* File input */}
+                <label className="block">
+                  <div className="relative border-2 border-dashed border-accent/40 
+                                  rounded-xl px-4 py-6 text-center cursor-pointer 
+                                  hover:border-primary hover:bg-primary/5 
+                                  transition-colors">
+                    <ImageIcon className="w-8 h-8 text-primary mx-auto mb-2" />
+                    <p className="text-sm font-semibold text-gray-800">
+                      {selectedFile ? selectedFile.name : 'Click to select or drag'}
+                    </p>
+                    <p className="text-xs text-muted">
+                      {selectedFile
+                        ? `${(selectedFile.size / 1024 / 1024).toFixed(2)}MB`
+                        : 'Select an image file'}
+                    </p>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                  </div>
+                </label>
+
+                {/* Error message */}
+                {fileError && (
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    <AlertTriangle className="w-4 h-4" />
+                    {fileError}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ── Footer Buttons ── */}
           <div className="flex justify-end gap-3 pt-2 border-t border-accent/30">
+            {uploadingFile && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 
+                              border border-primary rounded-lg text-primary 
+                              font-semibold text-sm">
+                <div className="h-4 w-4 animate-spin rounded-full 
+                                border-2 border-primary/30 border-t-primary" />
+                Uploading image to S3...
+              </div>
+            )}
             <button
               type="button"
               onClick={onClose}
-              disabled={loading}
+              disabled={loading || uploadingFile}
               className="px-5 py-2 text-sm font-medium text-gray-600 bg-gray-100
                          hover:bg-gray-200 rounded-lg transition-colors
                          disabled:opacity-50"
@@ -371,7 +497,7 @@ export default function LotFormModal({ mode = 'create', lot, onClose, onSuccess 
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || uploadingFile}
               className="btn-primary flex items-center gap-2 px-5 py-2"
             >
               {loading ? (

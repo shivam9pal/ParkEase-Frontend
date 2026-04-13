@@ -5,7 +5,7 @@ import { z } from 'zod';
 import {
   User, Mail, Phone, Shield, Lock,
   Save, AlertTriangle, Camera, CheckCircle2,
-  LogOut, Eye, EyeOff,
+  LogOut, Eye, EyeOff, X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -16,6 +16,7 @@ import { useAuth }      from '../../hooks/useAuth';
 import {
   getProfile, updateProfile,
   changePassword, deactivateAccount,
+  uploadProfilePicture,
 } from '../../api/authApi';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ConfirmDialog  from '../../components/common/ConfirmDialog';
@@ -62,6 +63,12 @@ export default function ProfilePage() {
   const [showNewPwd, setShowNewPwd]         = useState(false);
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   const [profileSaved, setProfileSaved]     = useState(false);
+
+  // ── File upload states ────────────────────────────────────────────────────
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [fileError, setFileError] = useState(null);
 
   // ── Profile Form ──────────────────────────────────────────────────
   const {
@@ -127,24 +134,128 @@ export default function ProfilePage() {
     fetch();
   }, []);
 
+  // ── Handle file selection ────────────────────────────────────────────────
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    console.log('[ProfilePage] File selected:', file?.name, 'Size:', file?.size, 'Type:', file?.type);
+    if (!file) {
+      console.log('[ProfilePage] No file provided in input');
+      return;
+    }
+
+    // Validate file
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (file.size > maxSize) {
+      console.log('[ProfilePage] File too large:', file.size, 'bytes');
+      setFileError('File size must be less than 10MB');
+      setSelectedFile(null);
+      setFilePreview(null);
+      return;
+    }
+
+    if (!validTypes.includes(file.type)) {
+      console.log('[ProfilePage] Invalid file type:', file.type);
+      setFileError('Only JPG, PNG, and WebP images are allowed');
+      setSelectedFile(null);
+      setFilePreview(null);
+      return;
+    }
+
+    console.log('[ProfilePage] File validation passed, setting selectedFile');
+    setFileError(null);
+    setSelectedFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      console.log('[ProfilePage] Preview created, length:', e.target?.result?.length);
+      setFilePreview(e.target?.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // ── Upload profile picture ────────────────────────────────────────────────
+  const handleUploadProfilePic = async () => {
+    console.log('[ProfilePage] handleUploadProfilePic called');
+    console.log('[ProfilePage] selectedFile:', selectedFile?.name, selectedFile?.size);
+    
+    if (!selectedFile) {
+      console.log('[ProfilePage] ❌ No selectedFile, returning');
+      return;
+    }
+    
+    setUploadingFile(true);
+    console.log('[ProfilePage] 🚀 Starting upload for:', selectedFile.name);
+    try {
+      console.log('[ProfilePage] Calling uploadProfilePicture API...');
+      const res = await uploadProfilePicture(selectedFile);
+      console.log('[ProfilePage] 📡 API Response received:', res);
+      console.log('[ProfilePage] Response data:', res.data);
+      
+      // Backend returns UserProfileResponse with updated profilePicUrl
+      if (res.data?.profilePicUrl) {
+        console.log('[ProfilePage] ✅ Upload successful! ProfilePicUrl:', res.data.profilePicUrl);
+        setProfile(res.data);
+        updateUser(res.data);
+        setSelectedFile(null);
+        setFilePreview(null);
+        toast.success('Profile picture updated! 📸');
+      } else {
+        console.log('[ProfilePage] ❌ No profilePicUrl in response:', res.data);
+        throw new Error('No profile picture URL returned from server');
+      }
+    } catch (err) {
+      console.error('[ProfilePage] ❌ Upload error:', err);
+      console.error('[ProfilePage] Error response:', err.response?.data);
+      console.error('[ProfilePage] Error status:', err.response?.status);
+      const msg = err.response?.data?.message || err.message;
+      toast.error(msg ?? 'Failed to upload profile picture.');
+    } finally {
+      setUploadingFile(false);
+      console.log('[ProfilePage] Upload process completed');
+    }
+  };
+
   // ── Save Profile ──────────────────────────────────────────────────
   const onSaveProfile = async (data) => {
     setSaving(true);
     try {
+      let uploadedProfile = profile;
+
+      // Step 1: Upload image if selected
+      if (selectedFile) {
+        console.log('[ProfilePage] 🚀 Uploading profile picture...');
+        setUploadingFile(true);
+        const uploadRes = await uploadProfilePicture(selectedFile);
+        console.log('[ProfilePage] ✅ Upload successful!', uploadRes.data);
+        uploadedProfile = uploadRes.data;
+        toast.success('Image uploaded! 📸');
+      }
+
+      // Step 2: Update other profile fields
+      console.log('[ProfilePage] 📝 Updating profile fields...');
       const res = await updateProfile({
         fullName     : data.fullName,
         phone        : data.phone || null,
-        profilePicUrl: data.profilePicUrl || null,
+        profilePicUrl: uploadedProfile?.profilePicUrl || null,
       });
+      console.log('[ProfilePage] ✅ Profile update successful!', res.data);
+      
       setProfile(res.data);
       updateUser(res.data);
+      setSelectedFile(null);
+      setFilePreview(null);
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 3000);
       toast.success('Profile updated successfully ✅');
-    } catch {
+    } catch (err) {
+      console.error('[ProfilePage] ❌ Error:', err);
       toast.error('Failed to update profile.');
     } finally {
       setSaving(false);
+      setUploadingFile(false);
     }
   };
 
@@ -368,33 +479,89 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Profile Pic URL */}
+          {/* Profile Picture */}
           <div>
-            <label className="label">
-              <Camera size={13} className="inline mr-1" />
-              Profile Picture URL
-              <span className="text-muted font-normal ml-1">(optional — S3 URL)</span>
+            <label className="text-sm font-semibold text-[#3D52A0]">
+              Profile Picture
+              <span className="ml-2 text-xs text-[#8697C4]">(JPG, PNG, WebP • Max 10MB)</span>
             </label>
-            <input
-              {...regProfile('profilePicUrl')}
-              type="url"
-              placeholder="https://your-s3-bucket.com/avatar.jpg"
-              className={`input-field
-                ${profileErrors.profilePicUrl ? 'border-red-400' : ''}`}
-            />
-            {profileErrors.profilePicUrl && (
-              <p className="text-xs text-red-500 mt-1">
-                {profileErrors.profilePicUrl.message}
-              </p>
-            )}
+            
+            {/* File input and preview */}
+            <div className="space-y-3 mt-2">
+              {/* Preview */}
+              {filePreview ? (
+                <div className="relative h-40 w-40">
+                  <img
+                    src={filePreview}
+                    alt="Preview"
+                    className="w-full h-full rounded-xl object-cover 
+                               border-4 border-[#7091E6]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFile(null);
+                      setFilePreview(null);
+                      setFileError(null);
+                    }}
+                    className="absolute -top-2 -right-2 w-6 h-6 
+                               bg-red-400 rounded-full flex items-center 
+                               justify-center text-white font-bold"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : null}
+
+              {/* File input */}
+              <label className="block">
+                <div className="relative border-2 border-dashed border-[#ADBBDA] 
+                                rounded-xl px-4 py-6 text-center cursor-pointer 
+                                hover:border-[#7091E6] hover:bg-[#EDE8F5]/30 
+                                transition-colors">
+                  <Camera className="w-8 h-8 text-[#7091E6] mx-auto mb-2" />
+                  <p className="text-sm font-semibold text-[#3D52A0]">
+                    {selectedFile ? selectedFile.name : 'Click to select or drag'}
+                  </p>
+                  <p className="text-xs text-[#8697C4]">
+                    {selectedFile
+                      ? `${(selectedFile.size / 1024 / 1024).toFixed(2)}MB`
+                      : 'Select an image file'}
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </div>
+              </label>
+
+              {/* Error message */}
+              {fileError && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4" />
+                  {fileError}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Save Button */}
-          <div className="flex justify-end pt-1">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            {uploadingFile && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-[#7091E6]/10 
+                              border border-[#7091E6] rounded-lg text-[#3D52A0] 
+                              font-semibold text-sm">
+                <div className="h-4 w-4 animate-spin rounded-full 
+                                border-2 border-[#7091E6]/30 border-t-[#7091E6]" />
+                Uploading to S3...
+              </div>
+            )}
             <button
               type="submit"
-              disabled={saving || !isProfileDirty}
-              className="btn-primary flex items-center gap-2 px-6 py-2
+              disabled={saving || uploadingFile || (!isProfileDirty && !selectedFile)}
+              className="btn-primary flex items-center justify-center gap-2
                          disabled:opacity-50"
             >
               {saving ? (

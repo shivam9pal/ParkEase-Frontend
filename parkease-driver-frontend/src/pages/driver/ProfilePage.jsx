@@ -12,6 +12,7 @@ import {
 import {
   getProfile, updateProfile,
   changePassword, deactivateAccount,
+  uploadProfilePicture,
 } from '../../api/authApi';
 import { useAuthStore } from '../../store/authStore';
 import { useAuth }      from '../../hooks/useAuth';
@@ -68,6 +69,12 @@ export default function ProfilePage() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [deactivating,   setDeactivating]   = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
+
+  // ── File upload states ────────────────────────────────────────────────────
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [fileError, setFileError] = useState(null);
 
   // ── Password visibility toggles ───────────────────────────────────────────
   const [showCurrent, setShowCurrent] = useState(false);
@@ -126,17 +133,117 @@ export default function ProfilePage() {
       : parts[0][0].toUpperCase();
   };
 
+  // ── Handle file selection ────────────────────────────────────────────────
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    console.log('[ProfilePage] File selected:', file?.name, 'Size:', file?.size, 'Type:', file?.type);
+    if (!file) {
+      console.log('[ProfilePage] No file provided in input');
+      return;
+    }
+
+    // Validate file
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (file.size > maxSize) {
+      console.log('[ProfilePage] File too large:', file.size, 'bytes');
+      setFileError('File size must be less than 10MB');
+      setSelectedFile(null);
+      setFilePreview(null);
+      return;
+    }
+
+    if (!validTypes.includes(file.type)) {
+      console.log('[ProfilePage] Invalid file type:', file.type);
+      setFileError('Only JPG, PNG, and WebP images are allowed');
+      setSelectedFile(null);
+      setFilePreview(null);
+      return;
+    }
+
+    console.log('[ProfilePage] File validation passed, setting selectedFile');
+    setFileError(null);
+    setSelectedFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      console.log('[ProfilePage] Preview created, length:', e.target?.result?.length);
+      setFilePreview(e.target?.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // ── Upload profile picture ────────────────────────────────────────────────
+  const handleUploadProfilePic = async () => {
+    console.log('[ProfilePage] handleUploadProfilePic called');
+    console.log('[ProfilePage] selectedFile:', selectedFile?.name, selectedFile?.size);
+    
+    if (!selectedFile) {
+      console.log('[ProfilePage] ❌ No selectedFile, returning');
+      return;
+    }
+    
+    setUploadingFile(true);
+    console.log('[ProfilePage] 🚀 Starting upload for:', selectedFile.name);
+    try {
+      console.log('[ProfilePage] Calling uploadProfilePicture API...');
+      const res = await uploadProfilePicture(selectedFile);
+      console.log('[ProfilePage] 📡 API Response received:', res);
+      console.log('[ProfilePage] Response data:', res.data);
+      
+      // Backend returns UserProfileResponse with updated profilePicUrl
+      if (res.data?.profilePicUrl) {
+        console.log('[ProfilePage] ✅ Upload successful! ProfilePicUrl:', res.data.profilePicUrl);
+        setProfile(res.data);
+        updateUser(res.data);
+        setSelectedFile(null);
+        setFilePreview(null);
+        toast.success('Profile picture updated! 📸');
+      } else {
+        console.log('[ProfilePage] ❌ No profilePicUrl in response:', res.data);
+        throw new Error('No profile picture URL returned from server');
+      }
+    } catch (err) {
+      console.error('[ProfilePage] ❌ Upload error:', err);
+      console.error('[ProfilePage] Error response:', err.response?.data);
+      console.error('[ProfilePage] Error status:', err.response?.status);
+      const msg = err.response?.data?.message || err.message;
+      toast.error(msg ?? 'Failed to upload profile picture.');
+    } finally {
+      setUploadingFile(false);
+      console.log('[ProfilePage] Upload process completed');
+    }
+  };
+
   // ── Submit profile update ─────────────────────────────────────────────────
   const onProfileSubmit = async (data) => {
     setSavingProfile(true);
     try {
+      let uploadedProfile = profile;
+
+      // Step 1: Upload image if selected
+      if (selectedFile) {
+        console.log('[ProfilePage] 🚀 Uploading profile picture...');
+        setUploadingFile(true);
+        const uploadRes = await uploadProfilePicture(selectedFile);
+        console.log('[ProfilePage] ✅ Upload successful!', uploadRes.data);
+        uploadedProfile = uploadRes.data;
+        toast.success('Image uploaded! 📸');
+      }
+
+      // Step 2: Update other profile fields
+      console.log('[ProfilePage] 📝 Updating profile fields...');
       const payload = {
         fullName:      data.fullName,
         phone:         data.phone         || undefined,
         vehiclePlate:  data.vehiclePlate  || undefined,
-        profilePicUrl: data.profilePicUrl || undefined,
+        profilePicUrl: uploadedProfile?.profilePicUrl || undefined,
       };
       const res = await updateProfile(payload);
+      console.log('[ProfilePage] ✅ Profile update successful!', res.data);
+      
       setProfile(res.data);
       updateUser(res.data);
       resetProfile({
@@ -146,12 +253,16 @@ export default function ProfilePage() {
         profilePicUrl: res.data.profilePicUrl ?? '',
       });
       setEditingProfile(false);
+      setSelectedFile(null);
+      setFilePreview(null);
       toast.success('Profile updated! ✅');
     } catch (err) {
+      console.error('[ProfilePage] ❌ Error:', err);
       const msg = err.response?.data?.message;
       toast.error(msg ?? 'Failed to update profile.');
     } finally {
       setSavingProfile(false);
+      setUploadingFile(false);
     }
   };
 
@@ -376,49 +487,100 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Profile pic URL */}
-              <div>
+              {/* Profile picture upload */}
+              <div className="sm:col-span-2">
                 <label className="form-label">
-                  Profile Picture URL
+                  Profile Picture
                   <span className="text-[#8697C4] font-normal ml-1">
-                    (opt)
+                    (JPG, PNG, WebP • Max 10MB)
                   </span>
                 </label>
-                <div className="relative">
-                  <Camera className="absolute left-3.5 top-1/2 -translate-y-1/2 
-                                     w-4 h-4 text-[#8697C4]" />
-                  <input
-                    type="url"
-                    placeholder="https://..."
-                    {...regProfile('profilePicUrl')}
-                    className={`form-input pl-10 ${
-                      profileErrors.profilePicUrl
-                        ? 'border-red-400 focus:ring-red-300' : ''
-                    }`}
-                  />
+                
+                {/* File input and preview */}
+                <div className="space-y-3">
+                  {/* Preview */}
+                  {filePreview ? (
+                    <div className="relative h-40 w-40 mx-auto">
+                      <img
+                        src={filePreview}
+                        alt="Preview"
+                        className="w-full h-full rounded-xl object-cover 
+                                   border-4 border-[#7091E6]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedFile(null);
+                          setFilePreview(null);
+                          setFileError(null);
+                        }}
+                        className="absolute -top-2 -right-2 w-6 h-6 
+                                   bg-red-400 rounded-full flex items-center 
+                                   justify-center text-white font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {/* File input */}
+                  <label className="block">
+                    <div className="relative border-2 border-dashed border-[#ADBBDA] 
+                                    rounded-xl px-4 py-6 text-center cursor-pointer 
+                                    hover:border-[#7091E6] hover:bg-[#EDE8F5]/30 
+                                    transition-colors">
+                      <Camera className="w-8 h-8 text-[#7091E6] mx-auto mb-2" />
+                      <p className="text-sm font-semibold text-[#3D52A0]">
+                        {selectedFile ? selectedFile.name : 'Click to select or drag'}
+                      </p>
+                      <p className="text-xs text-[#8697C4]">
+                        {selectedFile
+                          ? `${(selectedFile.size / 1024 / 1024).toFixed(2)}MB`
+                          : 'Select an image file'}
+                      </p>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                    </div>
+                  </label>
+
+                  {/* Error message */}
+                  {fileError && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertTriangle className="w-4 h-4" />
+                      {fileError}
+                    </p>
+                  )}
                 </div>
-                {profileErrors.profilePicUrl && (
-                  <p className="form-error">
-                    {profileErrors.profilePicUrl.message}
-                  </p>
-                )}
               </div>
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
+              {uploadingFile && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-[#7091E6]/10 
+                                border border-[#7091E6] rounded-lg text-[#3D52A0] 
+                                font-semibold text-sm">
+                  <div className="h-4 w-4 animate-spin rounded-full 
+                                  border-2 border-[#7091E6]/30 border-t-[#7091E6]" />
+                  Uploading to S3...
+                </div>
+              )}
               <button
                 type="button"
                 onClick={cancelEdit}
-                className="btn-ghost flex items-center gap-2"
+                className="btn-ghost flex items-center justify-center gap-2"
               >
                 <X className="w-4 h-4" />
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={savingProfile}
-                className="btn-primary flex items-center gap-2"
+                disabled={savingProfile || uploadingFile}
+                className="btn-primary flex items-center justify-center gap-2"
               >
                 {savingProfile ? (
                   <>

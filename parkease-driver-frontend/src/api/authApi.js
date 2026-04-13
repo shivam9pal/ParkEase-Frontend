@@ -85,3 +85,23 @@ export const loginWithGithub = () => {
     'width=500,height=600,scrollbars=yes'
   );
 };
+
+// ─── File Upload (Media Service) ──────────────────────────────────────────
+// POST /api/v1/auth/profile/picture
+// Body: multipart/form-data with file
+// Response 200: { uploadId, s3Url, fileUrl }
+export const uploadProfilePicture = (file) => {
+  console.log('[authApi] uploadProfilePicture called with:', file.name);
+  const formData = new FormData();
+  formData.append('file', file);
+  console.log('[authApi] FormData created, posting to /api/v1/auth/profile/picture');
+  return api.post('/api/v1/auth/profile/picture', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(res => {
+    console.log('[authApi] ✅ Upload response received:', res.status, res.data);
+    return res;
+  }).catch(err => {
+    console.error('[authApi] ❌ Upload failed:', err.response?.status, err.response?.data);
+    throw err;
+  });
+};
