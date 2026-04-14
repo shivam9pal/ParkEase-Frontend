@@ -96,7 +96,7 @@ export default function PaymentHistoryPage() {
       const a    = document.createElement('a');
       a.href     = url;
       a.download = `parkease-receipt-${
-        payment.paymentId.slice(-8).toUpperCase()
+        (payment.paymentId ?? 'UNKNOWN').slice(-8).toUpperCase()
       }.pdf`;
       document.body.appendChild(a);
       a.click();
@@ -392,7 +392,7 @@ function PaymentCard({ payment, lotName, downloading, onDownload, onViewBooking 
           <div className={`w-12 h-12 ${mode.bg} rounded-2xl flex items-center 
                           justify-center flex-shrink-0`}>
             <span className={`text-base font-black ${mode.text}`}>
-              {mode.label.slice(0, 1)}
+              {(mode.label ?? 'P').slice(0, 1)}
             </span>
           </div>
 
@@ -401,7 +401,7 @@ function PaymentCard({ payment, lotName, downloading, onDownload, onViewBooking 
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <h3 className="font-bold text-[#3D52A0] text-sm truncate">
                 {lotName ?? `Payment #${
-                  payment.paymentId.slice(-8).toUpperCase()
+                  (payment.paymentId ?? 'UNKNOWN').slice(-8).toUpperCase()
                 }`}
               </h3>
               <span className={`text-xs font-semibold px-2.5 py-0.5 
@@ -425,7 +425,7 @@ function PaymentCard({ payment, lotName, downloading, onDownload, onViewBooking 
               </span>
               {payment.transactionId && (
                 <span className="text-xs text-[#ADBBDA] font-mono">
-                  #{payment.transactionId.slice(-10).toUpperCase()}
+                  #{(payment.transactionId ?? '').slice(-10).toUpperCase()}
                 </span>
               )}
             </div>

@@ -15,12 +15,17 @@ import {
   cancelBooking, extendBooking,
 } from '../../api/bookingApi';
 import { getLotById }       from '../../api/lotApi';
-import { getMyPayments, downloadReceipt } from '../../api/paymentApi';
+import { 
+  createRazorpayOrder, 
+  verifyRazorpayPayment, 
+  initiateCashPayment,
+  getMyPayments, 
+  downloadReceipt 
+} from '../../api/paymentApi';
 import { formatDateTime, toBackendDateTime } from '../../utils/formatDateTime';
 import { formatCurrency }   from '../../utils/formatCurrency';
 import StatusBadge          from '../../components/booking/StatusBadge';
 import FareTimer            from '../../components/booking/FareTimer';
-import PaymentModal         from '../../components/payment/PaymentModal';
 import LoadingSpinner       from '../../components/common/LoadingSpinner';
 import ErrorMessage         from '../../components/common/ErrorMessage';
 
@@ -43,13 +48,14 @@ export default function BookingDetailPage() {
   const [booking,       setBooking]       = useState(null);
   const [lot,           setLot]           = useState(null);
   const [payment,       setPayment]       = useState(null);
+  const [paymentDone,   setPaymentDone]   = useState(false);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
 
   // ── Modal state ───────────────────────────────────────────────────────────
   const [extendOpen,  setExtendOpen]  = useState(false);
-  const [paymentOpen, setPaymentOpen] = useState(false);
+
   const [receiptLoading, setReceiptLoading] = useState(false);
 
   const {
@@ -141,7 +147,7 @@ export default function BookingDetailPage() {
   // ── Payment success callback ──────────────────────────────────────────────
   const handlePaymentSuccess = (paymentData) => {
     setPayment(paymentData);
-    setPaymentOpen(false);
+    setPaymentDone(true);
   };
 
   // ── Download receipt ──────────────────────────────────────────────────────
@@ -228,7 +234,7 @@ export default function BookingDetailPage() {
             </p>
           </div>
           <button
-            onClick={() => setPaymentOpen(true)}
+            onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
             className="btn-primary text-sm py-2 px-4 flex-shrink-0"
           >
             Pay Now
@@ -312,7 +318,14 @@ export default function BookingDetailPage() {
           checkInTime={booking.checkInTime}
         />
       )}
-
+      {/* ── Payment Section (shows buttons for CASH or RAZORPAY) ────── */}
+      {booking.status === 'COMPLETED' && !paymentDone && (
+        <PaymentSection
+          booking={booking}
+          lotName={lot?.name || 'Parking Lot'}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
+      )}
       {/* ── Payment Card ──────────────────────────────────────────────── */}
       {payment && (
         <div className={`card border-l-4 ${
@@ -439,7 +452,7 @@ export default function BookingDetailPage() {
 
         {needsPayment && (
           <button
-            onClick={() => setPaymentOpen(true)}
+            onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
             className="btn-primary flex items-center gap-2 py-3 w-full 
                        sm:w-auto justify-center text-base"
           >
@@ -617,16 +630,131 @@ export default function BookingDetailPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* ── Payment Modal ─────────────────────────────────────────────── */}
-      <PaymentModal
-        isOpen={paymentOpen}
-        onClose={() => setPaymentOpen(false)}
-        bookingId={bookingId}
-        totalAmount={booking.totalAmount}
-        lotName={lot?.name}
-        onSuccess={handlePaymentSuccess}
-      />
+// ── Payment Section Component ──────────────────────────────────────────────────
+function PaymentSection({ booking, lotName, onPaymentSuccess }) {
+  const [selectedMode, setSelectedMode] = useState('Razorpay');
+  const [paying, setPaying] = useState(false);
+
+  const modes = [
+    { value: 'Cash',      label: 'Cash' },
+    { value: 'Razorpay',  label: 'Razorpay' },
+  ];
+
+  const handlePayNow = async () => {
+    setPaying(true);
+    try {
+      if (selectedMode === 'Cash') {
+        // ─── CASH: direct backend call, no Razorpay ────────────────────
+        const res = await initiateCashPayment(booking.bookingId);
+        toast.success('Cash payment recorded!');
+        onPaymentSuccess(res.data);
+
+      } else {
+        // ─── Step 1: Create Razorpay order on backend ──────────────────
+        const orderRes = await createRazorpayOrder(booking.bookingId);
+        const { razorpayOrderId, razorpayKeyId, amountInPaise, currency, paymentId } = orderRes.data;
+
+        // ─── Step 2: Open Razorpay Checkout UI ────────────────────────
+        const options = {
+          key: razorpayKeyId,
+          amount: amountInPaise,
+          currency: currency,
+          name: 'ParkEase',
+          description: `Parking fee — ${lotName}`,
+          order_id: razorpayOrderId,
+
+          // ─── Step 3: On payment success, verify with backend ────────
+          handler: async function (response) {
+            try {
+              const verifyRes = await verifyRazorpayPayment({
+                paymentId: paymentId,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+                mode: selectedMode,
+              });
+              toast.success('Payment successful! 🎉');
+              onPaymentSuccess(verifyRes.data);
+            } catch (err) {
+              const msg = err.response?.data?.message || 'Payment verification failed.';
+              toast.error(msg);
+            }
+          },
+
+          prefill: {
+            name: '',
+            email: '',
+          },
+
+          theme: { color: '#1a73e8' },
+
+          modal: {
+            ondismiss: () => {
+              toast('Payment cancelled.', { icon: 'ℹ️' });
+              setPaying(false);
+            },
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+
+        rzp.on('payment.failed', function (response) {
+          toast.error(`Payment failed: ${response.error.description}`);
+          setPaying(false);
+        });
+
+        rzp.open();
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Something went wrong. Please try again.';
+      toast.error(msg);
+      setPaying(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6 mt-4 card">
+      <h3 className="text-lg font-semibold text-[#3D52A0] mb-1">Complete Payment</h3>
+      <p className="text-2xl font-bold text-[#7091E6] mb-4">
+        ₹{booking.totalAmount?.toFixed(2)}
+      </p>
+
+      {/* Payment Mode Selection */}
+      <div className="flex gap-3 mb-5 flex-wrap">
+        {modes.map(({ value, label }) => (
+          <button
+            key={value}
+            onClick={() => setSelectedMode(value)}
+            className={`px-4 py-2 rounded-lg border text-sm font-medium transition
+              ${selectedMode === value
+                ? 'bg-[#3D52A0] text-white border-[#3D52A0]'
+                : 'bg-white text-[#8697C4] border-[#EDE8F5] hover:border-[#7091E6]'
+              }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Info note for Razorpay */}
+      {selectedMode === 'Razorpay' && (
+        <p className="text-xs text-[#8697C4] mb-4 bg-[#EDE8F5] rounded-lg p-3">
+          You'll be redirected to Razorpay's secure checkout.
+        </p>
+      )}
+
+      <button
+        onClick={handlePayNow}
+        disabled={paying}
+        className="w-full bg-[#3D52A0] hover:bg-[#7091E6] disabled:opacity-50
+                   text-white font-semibold py-3 rounded-lg transition"
+      >
+        {paying ? 'Processing...' : `Pay ₹${booking.totalAmount?.toFixed(2)} via ${selectedMode}`}
+      </button>
     </div>
   );
 }
