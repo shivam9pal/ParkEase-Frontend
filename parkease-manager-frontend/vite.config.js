@@ -9,35 +9,29 @@ export default defineConfig({
     alias: { '@': path.resolve(__dirname, './src') },
   },
   build: {
-    target: 'esnext',
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-      },
-    },
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-              return 'vendor';
-            }
-            if (id.includes('@radix-ui') || id.includes('lucide-react')) {
-              return 'ui';
-            }
-            if (id.includes('recharts')) {
-              return 'charts';
-            }
-            if (id.includes('leaflet') || id.includes('react-leaflet')) {
-              return 'map';
-            }
+  target: 'esnext',
+  rollupOptions: {
+    output: {
+      manualChunks(id) {
+        if (id.includes('node_modules')) {
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+            return 'vendor';
           }
-        },
+          if (id.includes('@radix-ui') || id.includes('lucide-react')) {
+            return 'ui';
+          }
+          if (id.includes('recharts')) {
+            return 'charts';
+          }
+          if (id.includes('leaflet') || id.includes('react-leaflet')) {
+            return 'map';
+          }
+        }
       },
     },
-    chunkSizeWarningLimit: 1000,
   },
+  chunkSizeWarningLimit: 1000,
+},
   server: {
     port: 5173,
     strictPort: false,
