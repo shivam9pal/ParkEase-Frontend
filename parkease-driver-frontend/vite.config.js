@@ -4,23 +4,27 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    // ✅ Fix 1: Browser targets instead of ES version string
     target: ['chrome89', 'firefox89', 'safari15', 'edge89'],
-
-    // ✅ Fix 2: Switch to esbuild (built-in, zero install needed)
     minify: 'esbuild',
 
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'ui-vendor': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-select',
-            '@radix-ui/react-toast',
-          ],
-          'map-vendor': ['leaflet', 'react-leaflet'],
+        // ✅ Fix: manualChunks must be a FUNCTION in Vite 8 (rolldown)
+        manualChunks(id) {
+          if (id.includes('react-router-dom') || id.includes('react-dom') || id.includes('node_modules/react/')) {
+            return 'react-vendor'
+          }
+          if (
+            id.includes('@radix-ui/react-dialog') ||
+            id.includes('@radix-ui/react-dropdown-menu') ||
+            id.includes('@radix-ui/react-select') ||
+            id.includes('@radix-ui/react-toast')
+          ) {
+            return 'ui-vendor'
+          }
+          if (id.includes('leaflet') || id.includes('react-leaflet')) {
+            return 'map-vendor'
+          }
         },
       },
     },
