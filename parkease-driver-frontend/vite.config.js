@@ -5,13 +5,18 @@ export default defineConfig({
   plugins: [react()],
   build: {
     target: ['chrome89', 'firefox89', 'safari15', 'edge89'],
-    minify: 'esbuild',
+
+    // ✅ Fix: Remove minify entirely — Vite 8 defaults to 'oxc' automatically
+    // No esbuild, no terser, oxc is built-in and fastest
 
     rollupOptions: {
       output: {
-        // ✅ Fix: manualChunks must be a FUNCTION in Vite 8 (rolldown)
         manualChunks(id) {
-          if (id.includes('react-router-dom') || id.includes('react-dom') || id.includes('node_modules/react/')) {
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('react-dom') ||
+            id.includes('react-router-dom')
+          ) {
             return 'react-vendor'
           }
           if (
