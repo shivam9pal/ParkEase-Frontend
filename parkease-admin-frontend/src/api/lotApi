@@ -1,0 +1,22 @@
+import axiosInstance from "./axiosInstance";
+
+export const getAllLots = () =>
+  axiosInstance.get("/api/v1/lots").catch(err => {
+    console.error("❌ getAllLots failed:", err.message);
+    return { data: [] }; // Return empty list if endpoint fails
+  });
+
+export const getPendingLots = () =>
+  axiosInstance.get("/api/v1/lots/pending").catch(err => {
+    console.error("❌ getPendingLots failed:", err.message);
+    return { data: [] }; // Return empty list if endpoint fails
+  });
+
+export const getLotById = (lotId) =>
+  axiosInstance.get(`/api/v1/lots/${lotId}`);
+
+export const approveLot = (lotId) =>
+  axiosInstance.put(`/api/v1/lots/${lotId}/approve`);
+
+export const deactivateLot = (lotId) =>
+  axiosInstance.put(`/api/v1/lots/${lotId}/deactivate`);

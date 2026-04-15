@@ -1,0 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-parkease-border;
+  }
+
+  body {
+    @apply bg-parkease-bg text-gray-800 font-sans antialiased;
+  }
+
+  :root {
+    --primary: #3D52A0;
+    --primary-hover: #7091E6;
+    --bg: #EDE8F5;
+    --card: #ffffff;
+    --border: #ADBBDA;
+    --muted: #8697C4;
+  }
+}
+
+@layer components {
+  /* Primary Button */
+  .btn-primary {
+    @apply bg-[#3D52A0] hover:bg-[#7091E6] text-white font-semibold 
+           px-5 py-2.5 rounded-xl transition-all duration-200 
+           shadow-sm hover:shadow-card-hover active:scale-95 
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Secondary / Outline Button */
+  .btn-outline {
+    @apply border-2 border-[#3D52A0] text-[#3D52A0] 
+           hover:bg-[#3D52A0] hover:text-white font-semibold 
+           px-5 py-2.5 rounded-xl transition-all duration-200;
+  }
+
+  /* Ghost Button */
+  .btn-ghost {
+    @apply text-[#3D52A0] hover:bg-periwinkle-100 font-medium 
+           px-4 py-2 rounded-xl transition-all duration-200;
+  }
+
+  /* Card */
+  .card {
+    @apply bg-white rounded-2xl shadow-card border border-parkease-border p-6;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-card-hover transition-all duration-200 cursor-pointer;
+  }
+
+  /* Form Input */
+  .form-input {
+    @apply w-full border border-parkease-border rounded-xl px-4 py-3 
+           text-gray-800 bg-white placeholder:text-parkease-muted
+           focus:outline-none focus:ring-2 focus:ring-[#7091E6] 
+           focus:border-[#7091E6] transition-all duration-200;
+  }
+
+  .form-label {
+    @apply block text-sm font-semibold text-gray-700 mb-1.5;
+  }
+
+  .form-error {
+    @apply text-red-500 text-sm mt-1 flex items-center gap-1;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-reserved  { @apply bg-[#EDE8F5] text-[#7091E6] border border-[#ADBBDA]; }
+  .badge-active    { @apply bg-green-50 text-green-700 border border-green-200; }
+  .badge-completed { @apply bg-gray-100 text-gray-600 border border-gray-200; }
+  .badge-cancelled { @apply bg-red-50 text-red-600 border border-red-200; }
+  .badge-open      { @apply bg-green-50 text-green-700 border border-green-200; }
+  .badge-closed    { @apply bg-red-50 text-red-600 border border-red-200; }
+
+  /* Page Header */
+  .page-title {
+    @apply text-2xl font-bold text-[#3D52A0] mb-1;
+  }
+
+  .page-subtitle {
+    @apply text-sm text-parkease-muted mb-6;
+  }
+
+  /* Section divider */
+  .divider {
+    @apply border-t border-parkease-border my-6;
+  }
+
+  /* Loading spinner wrapper */
+  .loading-wrapper {
+    @apply flex items-center justify-center min-h-[300px];
+  }
+}
+
+/* Leaflet map fix */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 1rem;
+  z-index: 0;
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #EDE8F5; }
+::-webkit-scrollbar-thumb { background: #ADBBDA; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #8697C4; }
