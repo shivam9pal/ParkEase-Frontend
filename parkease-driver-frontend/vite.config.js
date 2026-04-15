@@ -1,30 +1,26 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   build: {
-    target: 'ES2020',
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true,
-      },
-    },
+    // ✅ Fix 1: Browser targets instead of ES version string
+    target: ['chrome89', 'firefox89', 'safari15', 'edge89'],
+
+    // ✅ Fix 2: Switch to esbuild (built-in, zero install needed)
+    minify: 'esbuild',
+
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          if (id.includes('node_modules/react')) {
-            return 'react-vendor';
-          }
-          if (id.includes('node_modules/@radix-ui')) {
-            return 'ui-vendor';
-          }
-          if (id.includes('node_modules/leaflet') || id.includes('node_modules/react-leaflet')) {
-            return 'map-vendor';
-          }
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-select',
+            '@radix-ui/react-toast',
+          ],
+          'map-vendor': ['leaflet', 'react-leaflet'],
         },
       },
     },
