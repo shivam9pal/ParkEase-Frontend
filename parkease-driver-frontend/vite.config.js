@@ -1,29 +1,34 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   build: {
-    target: 'ES2020',
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true,
-      },
-    },
+    target: ['chrome89', 'firefox89', 'safari15', 'edge89'],
+
+    // ✅ Fix: Remove minify entirely — Vite 8 defaults to 'oxc' automatically
+    // No esbuild, no terser, oxc is built-in and fastest
+
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          if (id.includes('node_modules/react')) {
-            return 'react-vendor';
+        manualChunks(id) {
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('react-dom') ||
+            id.includes('react-router-dom')
+          ) {
+            return 'react-vendor'
           }
-          if (id.includes('node_modules/@radix-ui')) {
-            return 'ui-vendor';
+          if (
+            id.includes('@radix-ui/react-dialog') ||
+            id.includes('@radix-ui/react-dropdown-menu') ||
+            id.includes('@radix-ui/react-select') ||
+            id.includes('@radix-ui/react-toast')
+          ) {
+            return 'ui-vendor'
           }
-          if (id.includes('node_modules/leaflet') || id.includes('node_modules/react-leaflet')) {
-            return 'map-vendor';
+          if (id.includes('leaflet') || id.includes('react-leaflet')) {
+            return 'map-vendor'
           }
         },
       },
