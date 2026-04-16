@@ -319,7 +319,7 @@ export default function BookingDetailPage() {
         />
       )}
       {/* ── Payment Section (shows buttons for CASH or RAZORPAY) ────── */}
-      {booking.status === 'COMPLETED' && !paymentDone && (
+      {booking.status === 'COMPLETED' && !paymentDone && !payment && (
         <PaymentSection
           booking={booking}
           lotName={lot?.name || 'Parking Lot'}
