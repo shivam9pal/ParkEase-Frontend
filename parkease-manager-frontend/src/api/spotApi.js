@@ -22,6 +22,16 @@ export const createSpot = (data) => {
   return api.post(`/api/v1/spots?lotId=${lotId}`, spotData);
 };
 
+// POST /api/v1/spots/bulk?lotId={lotId}
+// Role: MANAGER only
+// Body: BulkAddSpotRequest { spotNumberPrefix, count, floor, spotType, vehicleType, pricePerHour, ... }
+// Response 201: SpotResponse[] — array of all created spots
+// Backend gracefully skips if spotNumber already exists (idempotent)
+export const createBulkSpots = (data) => {
+  const { lotId, ...bulkData } = data;
+  return api.post(`/api/v1/spots/bulk?lotId=${lotId}`, bulkData);
+};
+
 // PUT /api/v1/spots/{spotId}
 // Role: MANAGER (own lot) or ADMIN
 // Body: UpdateSpotRequest — all optional (partial update)

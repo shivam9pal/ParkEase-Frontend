@@ -9,7 +9,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { getLotById } from '../../api/lotApi';
-import { getSpotsByLot, createSpot } from '../../api/spotApi';
+import { getSpotsByLot, createSpot, createBulkSpots } from '../../api/spotApi';
 import SpotCard from '../../components/spots/SpotCard';
 import SpotFormModal from '../../components/spots/SpotFormModal';
 import OccupancyMeter from '../../components/bookings/OccupancyMeter';
@@ -101,37 +101,34 @@ export default function ManageSpotsPage() {
     setBulkLoading(true);
     setBulkProgress({ done: 0, total: count });
 
-    const results = { success: 0, failed: 0 };
+    try {
+      // Single API call to bulk endpoint — backend generates auto-numbered spots
+      const res = await createBulkSpots({
+        lotId,
+        spotNumberPrefix: bulkPrefix,
+        count,
+        floor: 0,
+        spotType: bulkType,
+        vehicleType: bulkVehicle,
+        pricePerHour: Number(bulkPrice),
+        isEVCharging: bulkType === 'EV',
+        isHandicapped: false,
+      });
 
-    for (let i = bulkStart; i <= bulkEnd; i++) {
-      const spotNumber = `${bulkPrefix}-${String(i).padStart(2, '0')}`;
-      try {
-        const res = await createSpot({
-          lotId,
-          spotNumber,
-          spotType    : bulkType,
-          vehicleType : bulkVehicle,
-          pricePerHour: Number(bulkPrice),
-          isEVCharging: false,
-          isHandicapped: false,
-        });
-        setSpots((prev) => [...prev, res.data]);
-        results.success++;
-      } catch {
-        results.failed++;
-      }
-      setBulkProgress({ done: i - bulkStart + 1, total: count });
-    }
+      // Backend returns array of created spots
+      const createdSpots = res.data || [];
+      setSpots((prev) => [...prev, ...createdSpots]);
 
-    setBulkLoading(false);
-    setShowBulkModal(false);
-    setBulkProgress(null);
+      setBulkLoading(false);
+      setShowBulkModal(false);
+      setBulkProgress(null);
 
-    if (results.failed === 0) {
-      toast.success(`✅ ${results.success} spots added successfully!`);
-    } else {
-      toast(`⚠️ ${results.success} added, ${results.failed} failed (duplicates?)`,
-        { icon: '⚠️' });
+      toast.success(`✅ ${createdSpots.length} spots added successfully!`);
+    } catch (err) {
+      setBulkLoading(false);
+      setBulkProgress(null);
+      const msg = err.response?.data?.message || 'Failed to add spots';
+      toast.error(`❌ ${msg}`);
     }
   };
 
