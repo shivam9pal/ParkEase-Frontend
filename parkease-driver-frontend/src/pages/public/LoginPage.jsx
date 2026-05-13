@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { Eye, EyeOff, Mail, Lock, LogIn } from 'lucide-react';
 import { login, loginWithGoogle, loginWithGithub } from '../../api/authApi';
 import { useAuthStore } from '../../store/authStore';
+import { isErrorCode, getErrorMessage } from '../../utils/errorHandler';
 
 // Get frontend URL from environment for OAuth security
 const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
@@ -156,12 +157,20 @@ export default function LoginPage() {
 
     } catch (err) {
       setLoading(false);
-      const status = err.response?.status;
-      const msg    = err.response?.data?.message;
-      if (status === 401) {
-        setError('Invalid email or password');
+      // Use error codes if available, fallback to messages
+      if (isErrorCode(err, "INVALID_CREDENTIALS")) {
+        setError(getErrorMessage("INVALID_CREDENTIALS"));
+      } else if (isErrorCode(err, "ACCOUNT_INACTIVE")) {
+        setError(getErrorMessage("ACCOUNT_INACTIVE"));
+      } else if (isErrorCode(err, "EMAIL_NOT_VERIFIED")) {
+        setError(getErrorMessage("EMAIL_NOT_VERIFIED"));
+      } else if (isErrorCode(err, "USER_NOT_FOUND")) {
+        setError(getErrorMessage("USER_NOT_FOUND"));
       } else {
-        setError(msg ?? 'Login failed. Please try again.');
+        // Fallback: use error message from response or generic fallback
+        const errorCode = err.response?.data?.errorCode;
+        const errorMsg = errorCode ? getErrorMessage(errorCode) : (err.response?.data?.message ?? 'Login failed. Please try again.');
+        setError(errorMsg);
       }
       setShowError(true);
     }

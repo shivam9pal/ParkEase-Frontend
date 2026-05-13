@@ -54,7 +54,10 @@ export default function SpotCard({ spot, onEdit, onDeleted, onUpdated }) {
         toast.success(`Spot ${spot.spotNumber} is now Available ✅`);
       }
     } catch (err) {
-      if (err.response?.status === 409) {
+      const errorCode = err.response?.data?.code;
+      const status = err.response?.status;
+
+      if (errorCode === 'INVALID_STATUS_TRANSITION' || status === 409) {
         toast.error('Cannot change status — spot is currently reserved or occupied.');
       } else {
         toast.error('Failed to update maintenance status.');
@@ -72,7 +75,10 @@ export default function SpotCard({ spot, onEdit, onDeleted, onUpdated }) {
       onDeleted(spot.spotId);
       toast.success(`Spot ${spot.spotNumber} deleted.`);
     } catch (err) {
-      if (err.response?.status === 409) {
+      const errorCode = err.response?.data?.code;
+      const status = err.response?.status;
+
+      if (errorCode === 'INVALID_STATUS_TRANSITION' || status === 409) {
         toast.error('Cannot delete — spot is currently reserved or occupied.');
       } else {
         toast.error('Failed to delete spot.');

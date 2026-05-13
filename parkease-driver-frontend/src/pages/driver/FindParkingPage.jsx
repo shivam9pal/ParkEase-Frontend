@@ -451,7 +451,7 @@ function LotCard({ lot, isSelected, onClick, onView }) {
                         }`}>
             {lot.availableSpots}
           </p>
-          <p className="text-[10px] text-gray-500 font-medium">Free</p>
+          <p className="text-[10px] text-gray-500 font-medium">Available</p>
         </div>
 
         {/* Total spots */}

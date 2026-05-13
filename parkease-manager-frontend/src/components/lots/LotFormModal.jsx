@@ -212,8 +212,16 @@ export default function LotFormModal({ mode = 'create', lot, onClose, onSuccess 
     } catch (err) {
       console.error('[LotFormModal] ❌ Error:', err);
       const msg = err.response?.data?.message ?? '';
-      if (err.response?.status === 403) {
+      const status = err.response?.status;
+      
+      if (status === 403) {
         toast.error('You can only manage your own lots.');
+      } else if (status === 404) {
+        toast.error('Parking lot not found.');
+      } else if (status === 400) {
+        toast.error(msg || 'Invalid lot data. Please check your input.');
+      } else if (status === 409) {
+        toast.error(msg || 'Cannot update lot at this time. Please try again.');
       } else if (msg) {
         toast.error(msg);
       } else {

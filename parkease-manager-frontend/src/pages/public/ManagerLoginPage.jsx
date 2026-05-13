@@ -7,6 +7,7 @@ import { Eye, EyeOff, Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { login } from '../../api/authApi';
 import { useAuthStore } from '../../store/authStore';
+import { isErrorCode, getErrorMessage } from '../../utils/errorHandler';
 
 // ── Zod Schema ───────────────────────────────────────────────────────
 const loginSchema = z.object({
@@ -58,18 +59,21 @@ export default function ManagerLoginPage() {
       navigate('/manager');
 
     } catch (err) {
-      const status = err.response?.status;
-      const message = err.response?.data?.message || '';
       let errorMsg = '';
       
-      if (status === 401) {
-        errorMsg = message || 'Invalid email or password. Please try again.';
-      } else if (status === 403) {
-        errorMsg = message || 'Account is deactivated. Contact support.';
-      } else if (status === 400) {
-        errorMsg = message || 'Invalid request. Please check your details.';
+      // Use error codes if available
+      if (isErrorCode(err, "INVALID_CREDENTIALS")) {
+        errorMsg = getErrorMessage("INVALID_CREDENTIALS");
+      } else if (isErrorCode(err, "ACCOUNT_INACTIVE")) {
+        errorMsg = getErrorMessage("ACCOUNT_INACTIVE");
+      } else if (isErrorCode(err, "EMAIL_NOT_VERIFIED")) {
+        errorMsg = getErrorMessage("EMAIL_NOT_VERIFIED");
+      } else if (isErrorCode(err, "USER_NOT_FOUND")) {
+        errorMsg = getErrorMessage("USER_NOT_FOUND");
       } else {
-        errorMsg = message || 'Login failed. Please check your connection.';
+        // Fallback to response message or generic error
+        const errorCode = err.response?.data?.errorCode;
+        errorMsg = errorCode ? getErrorMessage(errorCode) : (err.response?.data?.message || 'Login failed. Please check your connection.');
       }
       
       setError(errorMsg);

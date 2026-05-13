@@ -2,10 +2,10 @@ import { useEffect, useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   ParkingSquare, CheckCircle2, Clock, RefreshCw,
-  MapPin, DollarSign, CheckCheck, Ban,
+  MapPin, DollarSign, CheckCheck, Ban, AlertCircle, X,
 } from "lucide-react";
 import {
-  getAllLots, getPendingLots, approveLot, deactivateLot,
+  getAllLots, getPendingLots, approveLot, rejectLot, deactivateLot,
 } from "../api/lotApi";
 import { formatCurrency, formatDateTime, truncateId } from "../utils/formatters";
 import PageHeader from "../components/shared/PageHeader";
@@ -61,6 +61,10 @@ export default function LotManagementPage() {
     open: false, lotId: null, action: null, lotName: "",
   });
 
+  const [rejectModal, setRejectModal] = useState({
+    open: false, lotId: null, lotName: "", reason: "",
+  });
+
   useEffect(() => { fetchAll(); }, []);
 
   const fetchAll = async () => {
@@ -75,8 +79,9 @@ export default function LotManagementPage() {
       
       setAllLots(Array.isArray(allData) ? allData : []);
       setPendingLots(Array.isArray(pendingData) ? pendingData : []);
-    } catch {
-      toast.error("Failed to load parking lots");
+    } catch (err) {
+      console.error("❌ Error fetching lots:", err.response?.data?.message || err.message);
+      toast.error(err.response?.data?.message || "Failed to load parking lots");
     } finally {
       setLoading(false);
     }
@@ -87,7 +92,45 @@ export default function LotManagementPage() {
   };
 
   const openConfirm = (lot, action) => {
-    setConfirm({ open: true, lotId: lot.lotId, action, lotName: lot.name });
+    if (action === "reject") {
+      setRejectModal({ open: true, lotId: lot.lotId, lotName: lot.name, reason: "" });
+    } else {
+      setConfirm({ open: true, lotId: lot.lotId, action, lotName: lot.name });
+    }
+  };
+
+  const handleRejectSubmit = async () => {
+    if (!rejectModal.reason.trim()) {
+      toast.error("Please provide a rejection reason");
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await rejectLot(rejectModal.lotId, rejectModal.reason);
+      toast.success(`"${rejectModal.lotName}" has been rejected`);
+      // Remove from pending lots
+      setPendingLots((prev) =>
+        prev.filter((l) => l.lotId !== rejectModal.lotId)
+      );
+      setRejectModal({ open: false, lotId: null, lotName: "", reason: "" });
+    } catch (err) {
+      const status = err.response?.status;
+      const msg = err.response?.data?.message ?? '';
+      
+      if (status === 404) {
+        toast.error('Parking lot not found.');
+      } else if (status === 403) {
+        toast.error('You do not have permission for this action.');
+      } else if (status === 409) {
+        toast.error(msg || 'Action cannot be completed at this time.');
+      } else if (status === 400) {
+        toast.error(msg || 'Invalid request.');
+      } else {
+        toast.error(msg || 'Action failed');
+      }
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleConfirm = async () => {
@@ -113,8 +156,20 @@ export default function LotManagementPage() {
         );
       }
     } catch (err) {
-      const msg = err.response?.data?.message || "Action failed";
-      toast.error(msg);
+      const status = err.response?.status;
+      const msg = err.response?.data?.message ?? '';
+      
+      if (status === 404) {
+        toast.error('Parking lot not found.');
+      } else if (status === 403) {
+        toast.error('You do not have permission for this action.');
+      } else if (status === 409) {
+        toast.error(msg || 'Action cannot be completed at this time.');
+      } else if (status === 400) {
+        toast.error(msg || 'Invalid request.');
+      } else {
+        toast.error(msg || 'Action failed');
+      }
     } finally {
       setActionLoading(false);
       setConfirm({ open: false, lotId: null, action: null, lotName: "" });
@@ -245,12 +300,20 @@ export default function LotManagementPage() {
       label: "Actions",
       className: "text-right",
       render: (row) => (
-        <button
-          onClick={() => openConfirm(row, "approve")}
-          className="flex items-center gap-1.5 text-xs font-semibold text-white bg-primary hover:bg-primary-hover px-3 py-1.5 rounded-md transition-colors shadow-sm"
-        >
-          <CheckCheck size={13} /> Approve Lot
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => openConfirm(row, "approve")}
+            className="flex items-center gap-1.5 text-xs font-semibold text-white bg-primary hover:bg-primary-hover px-3 py-1.5 rounded-md transition-colors shadow-sm"
+          >
+            <CheckCheck size={13} /> Approve
+          </button>
+          <button
+            onClick={() => openConfirm(row, "reject")}
+            className="flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-md transition-colors"
+          >
+            <AlertCircle size={13} /> Reject
+          </button>
+        </div>
       ),
     },
   ];
@@ -372,6 +435,75 @@ export default function LotManagementPage() {
           confirm.action === "approve" ? "default" : "destructive"
         }
       />
+
+      {/* Reject Modal */}
+      {rejectModal.open && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
+            <div className="flex items-center justify-between p-6 border-b border-muted/40">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                  <AlertCircle size={20} className="text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Reject Lot</h3>
+                  <p className="text-xs text-secondary">"{rejectModal.lotName}"</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRejectModal({ open: false, lotId: null, lotName: "", reason: "" })}
+                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={18} className="text-secondary" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Reason for Rejection *
+                </label>
+                <textarea
+                  value={rejectModal.reason}
+                  onChange={(e) =>
+                    setRejectModal({ ...rejectModal, reason: e.target.value })
+                  }
+                  placeholder="Explain why this lot is being rejected... (e.g., invalid location, insufficient documentation, etc.)"
+                  className="w-full px-3 py-2 border border-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                  rows={4}
+                />
+                <p className="text-xs text-secondary mt-1">
+                  {rejectModal.reason.length}/500 characters
+                </p>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex gap-2">
+                <AlertCircle size={16} className="text-yellow-700 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-yellow-700">
+                  The manager will receive an email with this rejection reason and can resubmit after addressing the issues.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 p-6 border-t border-muted/40 bg-gray-50 rounded-b-lg">
+              <button
+                onClick={() => setRejectModal({ open: false, lotId: null, lotName: "", reason: "" })}
+                className="flex-1 px-4 py-2 border border-muted text-secondary rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRejectSubmit}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm disabled:opacity-50"
+                disabled={actionLoading || !rejectModal.reason.trim()}
+              >
+                {actionLoading ? "Rejecting..." : "Reject Lot"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

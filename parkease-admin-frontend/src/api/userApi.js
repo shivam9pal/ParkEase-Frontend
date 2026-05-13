@@ -23,6 +23,27 @@ export const getAllUsers = (role = null) => {
 };
 
 /**
+ * Get a user by ID
+ * @param {string} userId - User UUID
+ * @returns Promise<AxiosResponse> with UserProfileResponse
+ */
+export const getUserById = (userId) => {
+  logger.log("📤 Fetching user details:", userId);
+  return axiosInstance
+    .get(`/api/v1/auth/users/${userId}`)
+    .then((res) => {
+      logger.log("✅ getUserById successful:", res.data?.id ?? userId);
+      return res;
+    })
+    .catch((err) => {
+      logger.error("❌ getUserById failed:", err.message);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
+      throw err;
+    });
+};
+
+/**
  * Deactivate a user (soft delete)
  * @param {string} userId - User UUID
  * @returns Promise<AxiosResponse> with UserProfileResponse (isActive=false)

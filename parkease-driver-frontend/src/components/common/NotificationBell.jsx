@@ -176,7 +176,7 @@ export default function NotificationBell() {
           </div>
 
           {/* Notification List */}
-          <div className="max-h-[380px] overflow-y-auto">
+          <div className="max-h-[600px] overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center py-10 gap-3">
                 <div className="h-5 w-5 animate-spin rounded-full 
@@ -233,8 +233,7 @@ export default function NotificationBell() {
                                     }`}>
                         {notif.title}
                       </p>
-                      <p className="text-xs text-[#8697C4] mt-0.5 
-                                    line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-[#8697C4] mt-0.5 leading-relaxed whitespace-normal break-words">
                         {notif.message}
                       </p>
                       <p className="text-[10px] text-[#ADBBDA] mt-1.5 

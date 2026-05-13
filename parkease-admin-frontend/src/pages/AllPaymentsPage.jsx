@@ -109,18 +109,20 @@ export default function AllPaymentsPage() {
   const handleDownloadReceipt = async (paymentId) => {
     setDownloadingId(paymentId);
     try {
+      // Backend now always returns S3 URL (synchronous upload)
+      // No more PDF bytes handling
       const res = await downloadReceipt(paymentId);
-      const url  = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
-      const link = document.createElement("a");
-      link.href  = url;
-      link.setAttribute("download", `receipt-${paymentId.slice(0, 8)}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success("Receipt downloaded");
+      const { s3Url } = res.data;
+
+      if (s3Url) {
+        // ─── Open S3 URL in new tab ──────────────────────────────────────
+        window.open(s3Url, '_blank');
+        toast.success('Opening receipt from S3...');
+      } else {
+        toast.error('No receipt URL found');
+      }
     } catch {
-      toast.error("Failed to download receipt");
+      toast.error('Failed to download receipt');
     } finally {
       setDownloadingId(null);
     }

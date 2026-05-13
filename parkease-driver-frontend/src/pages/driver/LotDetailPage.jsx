@@ -143,8 +143,19 @@ export default function LotDetailPage() {
         setLot(lotRes.data);
         setSpots(spotsRes.data);
         setVehicles(vehiclesRes.data);
-      } catch {
-        setError('Failed to load lot details. Please try again.');
+      } catch (err) {
+        const status = err.response?.status;
+        const msg = err.response?.data?.message ?? '';
+        
+        if (status === 404) {
+          setError('Parking lot not found.');
+        } else if (status === 403) {
+          setError('You do not have permission to view this parking lot.');
+        } else if (status === 400) {
+          setError(msg || 'Invalid request.');
+        } else {
+          setError(msg || 'Failed to load lot details. Please try again.');
+        }
       } finally {
         setLoading(false);
       }
@@ -172,7 +183,7 @@ export default function LotDetailPage() {
     if (bookingType === 'WALK_IN') {
       const now    = new Date();
       const startTime = new Date(now.getTime() + 2 * 60 * 1000); // 2 minutes ahead
-      const twoHrs = new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
+      const oneHr = new Date(startTime.getTime() + 1 * 60 * 60 * 1000); // 1 hour duration
       
       // Format as local datetime string (without timezone conversion)
       const formatLocal = (date) => {
@@ -185,7 +196,7 @@ export default function LotDetailPage() {
       };
       
       setValue('startTime', formatLocal(startTime));
-      setValue('endTime',   formatLocal(twoHrs));
+      setValue('endTime',   formatLocal(oneHr));
     }
   }, [bookingType, setValue]);
 
@@ -218,10 +229,16 @@ export default function LotDetailPage() {
       closeModal();
       navigate(`/driver/bookings/${res.data.bookingId}`);
     } catch (err) {
+      const errorCode = err.response?.data?.code;
       const status = err.response?.status;
-      const msg    = err.response?.data?.message ?? '';
-      if (status === 409) {
+      const msg = err.response?.data?.message ?? '';
+
+      if (errorCode === 'INVALID_STATUS_TRANSITION' || status === 409) {
         toast.error('Spot no longer available. Please choose another.');
+      } else if (status === 500) {
+        const errorId = err.response?.data?.errorId;
+        const displayMsg = errorId ? `Booking failed (ID: ${errorId})` : 'Booking failed';
+        toast.error(displayMsg);
       } else {
         toast.error(msg || 'Booking failed. Please try again.');
       }
@@ -667,14 +684,37 @@ export default function LotDetailPage() {
 
               {/* Walk-in info */}
               {bookingType === 'WALK_IN' && (
-                <div className="flex items-start gap-3 bg-[#EDE8F5] 
-                                border border-[#ADBBDA] rounded-xl p-4">
-                  <Info className="w-5 h-5 text-[#7091E6] flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-[#3D52A0] font-medium">
-                    Walk-in booking will start now and end in 2 hours. 
-                    You can extend later from your booking details.
-                  </p>
-                </div>
+                <>
+                  <div className="flex items-start gap-3 bg-[#EDE8F5] 
+                                  border border-[#ADBBDA] rounded-xl p-4">
+                    <Info className="w-5 h-5 text-[#7091E6] flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-[#3D52A0] font-medium">
+                      Walk-in booking will start now and end in 1 hour. 
+                      You can extend later from your booking details.
+                    </p>
+                  </div>
+
+                  {/* Price estimate for WALK_IN (1 hour fixed) */}
+                  <div className="bg-[#3D52A0] rounded-xl p-4 
+                                  flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-[#ADBBDA] font-medium mb-0.5">
+                        Estimated Total
+                      </p>
+                      <p className="text-xl font-black text-white">
+                        {formatCurrency(selectedSpot?.pricePerHour)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-[#ADBBDA] font-medium mb-0.5">
+                        Duration
+                      </p>
+                      <p className="text-sm font-bold text-white">
+                        1.0h
+                      </p>
+                    </div>
+                  </div>
+                </>
               )}
 
               {/* Price estimate (PRE_BOOKING) */}

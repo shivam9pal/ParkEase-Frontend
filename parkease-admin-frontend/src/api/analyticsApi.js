@@ -1,9 +1,10 @@
 import axiosInstance from "./axiosInstance";
 import logger from "../utils/logger";
+import { buildAnalyticsErrorDisplay, logAnalyticsError } from "../utils/errorHandler";
 
 export const getPlatformSummary = () =>
   axiosInstance.get("/api/v1/analytics/platform/summary").catch(err => {
-    logger.error("❌ getPlatformSummary failed:", err.message);
+    logAnalyticsError("getPlatformSummary", err);
     throw err;
   });
 
@@ -18,19 +19,11 @@ export const getPlatformOccupancy = (period = "WEEKLY") => {
       return res;
     })
     .catch(err => {
-      logger.warn(`⚠️ /api/v1/analytics/platform/occupancy endpoint not available - using mock data`);
-      logger.warn("  Error:", err.message);
-      // Mock data as fallback
-      const mockOccupancy = [
-        { date: "Mon", occupancyRate: 65 },
-        { date: "Tue", occupancyRate: 72 },
-        { date: "Wed", occupancyRate: 68 },
-        { date: "Thu", occupancyRate: 75 },
-        { date: "Fri", occupancyRate: 82 },
-        { date: "Sat", occupancyRate: 88 },
-        { date: "Sun", occupancyRate: 78 },
-      ];
-      return { data: mockOccupancy };
+      const errorMessage = buildAnalyticsErrorDisplay(err);
+      logger.warn(`⚠️ /api/v1/analytics/platform/occupancy endpoint error:`);
+      logger.warn(`   ${errorMessage}`);
+      logAnalyticsError("getPlatformOccupancy", err);
+      throw err;  // Let component handle the error with proper messaging
     });
 };
 
@@ -71,32 +64,35 @@ export const getPlatformRevenueTrend = (from, to) => {
       return res;
     })
     .catch(err => {
-      logger.warn(`⚠️ /api/v1/payments/revenue/platform failed - using mock data`);
-      logger.warn("  Error:", err.message);
-      logger.warn("  Status:", err.response?.status);
-      // Mock data for revenue trend as fallback
-      const mockRevenue = [
-        { date: "2026-04-05", revenue: 15000 },
-        { date: "2026-04-06", revenue: 18000 },
-        { date: "2026-04-07", revenue: 16500 },
-        { date: "2026-04-08", revenue: 19000 },
-        { date: "2026-04-09", revenue: 22000 },
-        { date: "2026-04-10", revenue: 25000 },
-        { date: "2026-04-11", revenue: 20000 },
-      ];
-      return { data: mockRevenue };
+      const errorMessage = buildAnalyticsErrorDisplay(err);
+      logger.warn(`⚠️ /api/v1/payments/revenue/platform failed:`);
+      logger.warn(`   ${errorMessage}`);
+      logAnalyticsError("getPlatformRevenueTrend", err);
+      throw err;  // Let component handle the error with proper messaging
     });
 };
 
 export const getLotAnalyticsSummary = (lotId) =>
-  axiosInstance.get(`/api/v1/analytics/lots/${lotId}/summary`);
+  axiosInstance.get(`/api/v1/analytics/lots/${lotId}/summary`)
+    .catch(err => {
+      logAnalyticsError("getLotAnalyticsSummary", err);
+      throw err;
+    });
 
 export const getLotRevenueTrend = (lotId, period = "WEEKLY") =>
   axiosInstance.get(`/api/v1/analytics/lots/${lotId}/revenue`, {
     params: { period },
-  });
+  })
+    .catch(err => {
+      logAnalyticsError("getLotRevenueTrend", err);
+      throw err;
+    });
 
 export const getLotOccupancyTrend = (lotId, period = "WEEKLY") =>
   axiosInstance.get(`/api/v1/analytics/lots/${lotId}/occupancy`, {
     params: { period },
-  });
+  })
+    .catch(err => {
+      logAnalyticsError("getLotOccupancyTrend", err);
+      throw err;
+    });

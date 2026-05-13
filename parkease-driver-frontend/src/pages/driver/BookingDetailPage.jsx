@@ -54,7 +54,10 @@ export default function BookingDetailPage() {
   const [actionLoading, setActionLoading] = useState(null);
 
   // ── Modal state ───────────────────────────────────────────────────────────
-  const [extendOpen,  setExtendOpen]  = useState(false);
+  const [extendOpen,    setExtendOpen]    = useState(false);
+  const [paymentOpen,   setPaymentOpen]   = useState(false);
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState('Razorpay');
+  const [paying, setPaying] = useState(false);
 
   const [receiptLoading, setReceiptLoading] = useState(false);
 
@@ -155,21 +158,106 @@ export default function BookingDetailPage() {
     if (!payment?.paymentId) return;
     setReceiptLoading(true);
     try {
-      const res  = await downloadReceipt(payment.paymentId);
-      const blob = new Blob([res.data], { type: 'application/pdf' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `receipt-${payment.paymentId.slice(-8).toUpperCase()}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success('Receipt downloaded!');
-    } catch {
+      // Backend now always returns S3 URL (synchronous upload)
+      // No more PDF bytes handling
+      const res = await downloadReceipt(payment.paymentId);
+      const { s3Url } = res.data;
+
+      if (s3Url) {
+        // ─── Open S3 URL in new tab ──────────────────────────────────────
+        window.open(s3Url, '_blank');
+        toast.success('Opening receipt from S3...');
+      } else {
+        toast.error('No receipt URL found');
+      }
+    } catch (error) {
       toast.error('Failed to download receipt. Please try again.');
     } finally {
       setReceiptLoading(false);
+    }
+  };
+
+  // ── Payment from Modal ────────────────────────────────────────────────────
+  const handlePaymentNow = async () => {
+    if (!booking) return;
+    setPaying(true);
+    try {
+      if (selectedPaymentMode === 'Cash') {
+        // ─── CASH: direct backend call, no Razorpay ────────────────────
+        const res = await initiateCashPayment(booking.bookingId);
+        toast.success('Cash payment recorded! Please pay at counter.');
+        setPaymentOpen(false);
+        handlePaymentSuccess(res.data);
+
+      } else {
+        // ─── Step 1: Create Razorpay order on backend ──────────────────
+        const orderRes = await createRazorpayOrder(booking.bookingId);
+        const { razorpayOrderId, razorpayKeyId, amountInPaise, currency, paymentId } = orderRes.data;
+
+        // ─── Step 2: Open Razorpay Checkout UI ────────────────────────
+        const options = {
+          key: razorpayKeyId,
+          amount: amountInPaise,
+          currency: currency,
+          name: 'ParkEase',
+          description: `Parking fee — ${lot?.name || 'Parking Lot'}`,
+          order_id: razorpayOrderId,
+
+          // ─── Step 3: On payment success, verify with backend ────────
+          handler: async function (response) {
+            try {
+              // Create a timeout promise (10 seconds)
+              const verifyPromise = verifyRazorpayPayment({
+                paymentId: paymentId,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+                mode: selectedPaymentMode,
+              });
+
+              const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Payment verification timeout - please check your payment status in a moment')), 10000)
+              );
+
+              const verifyRes = await Promise.race([verifyPromise, timeoutPromise]);
+              toast.success('Payment successful! 🎉');
+              setPaymentOpen(false);
+              handlePaymentSuccess(verifyRes.data);
+            } catch (err) {
+              const msg = err.response?.data?.message || err.message || 'Payment verification failed.';
+              toast.error(msg);
+              setPaying(false);
+            }
+          },
+
+          prefill: {
+            name: '',
+            email: '',
+          },
+
+          theme: { color: '#1a73e8' },
+
+          modal: {
+            ondismiss: () => {
+              toast('Payment cancelled.', { icon: 'ℹ️' });
+              setPaying(false);
+            },
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+
+        rzp.on('payment.failed', function (response) {
+          toast.error(`Payment failed: ${response.error.description}`);
+          setPaying(false);
+        });
+
+        rzp.open();
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Something went wrong. Please try again.';
+      toast.error(msg);
+      setPaying(false);
     }
   };
 
@@ -504,13 +592,6 @@ export default function BookingDetailPage() {
                 onClick={() => { setExtendOpen(true); reset(); }}
                 variant="outline"
               />
-              <ActionBtn
-                icon={XCircle}
-                label="Cancel"
-                loading={actionLoading === 'cancel'}
-                onClick={() => handleAction('cancel')}
-                variant="danger"
-              />
             </>
           )}
         </div>
@@ -524,7 +605,7 @@ export default function BookingDetailPage() {
           onClick={() => setExtendOpen(false)}
         >
           <div
-            className="bg-white rounded-3xl shadow-2xl w-full max-w-md 
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-lg 
                        animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
@@ -551,7 +632,7 @@ export default function BookingDetailPage() {
 
             <form
               onSubmit={handleSubmit(onExtendSubmit)}
-              className="p-6 space-y-5"
+              className="p-6 space-y-5 max-h-[80vh] overflow-y-auto"
             >
               {/* New end time */}
               <div>
@@ -560,7 +641,7 @@ export default function BookingDetailPage() {
                   type="datetime-local"
                   min={getMinExtendTime()}
                   {...register('newEndTime')}
-                  className={`form-input ${
+                  className={`form-input w-full ${
                     errors.newEndTime
                       ? 'border-red-400 focus:ring-red-300' : ''
                   }`}
@@ -572,21 +653,20 @@ export default function BookingDetailPage() {
 
               {/* Extension cost estimate */}
               {extInfo && (
-                <div className="bg-[#3D52A0] rounded-xl p-4 
-                                flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-[#ADBBDA] font-medium mb-0.5">
+                <div className="space-y-3">
+                  <div className="bg-[#3D52A0] rounded-xl p-4">
+                    <p className="text-xs text-[#ADBBDA] font-medium mb-2">
                       Additional Duration
                     </p>
-                    <p className="text-lg font-black text-white">
+                    <p className="text-2xl font-black text-white">
                       {extInfo.hours}h
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-[#ADBBDA] font-medium mb-0.5">
+                  <div className="bg-green-600 rounded-xl p-4">
+                    <p className="text-xs text-green-100 font-medium mb-2">
                       Extra Cost (est.)
                     </p>
-                    <p className="text-lg font-black text-white">
+                    <p className="text-2xl font-black text-white">
                       {extInfo.cost}
                     </p>
                   </div>
@@ -630,6 +710,119 @@ export default function BookingDetailPage() {
           </div>
         </div>
       )}
+
+      {/* ── Payment Modal ──────────────────────────────────────────────── */}
+      {paymentOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center 
+                     p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setPaymentOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-md 
+                       animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between p-6 
+                            border-b border-[#EDE8F5]">
+              <div>
+                <h3 className="text-lg font-black text-[#3D52A0]">
+                  Complete Payment
+                </h3>
+                <p className="text-xs text-[#8697C4] mt-0.5">
+                  Amount: {formatCurrency(payment?.amount || booking?.totalAmount)}
+                </p>
+              </div>
+              <button
+                onClick={() => setPaymentOpen(false)}
+                className="p-2 rounded-xl text-[#8697C4] 
+                           hover:text-[#3D52A0] hover:bg-[#EDE8F5] 
+                           transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="p-6 space-y-5">
+              {/* Payment mode selection */}
+              <div>
+                <p className="text-sm font-semibold text-[#3D52A0] mb-3">
+                  Select Payment Method
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSelectedPaymentMode('Cash')}
+                    className={`flex-1 px-4 py-3 rounded-xl border-2 font-semibold text-sm transition
+                      ${selectedPaymentMode === 'Cash'
+                        ? 'bg-[#3D52A0] text-white border-[#3D52A0]'
+                        : 'bg-white text-[#8697C4] border-[#EDE8F5] hover:border-[#7091E6]'
+                      }`}
+                  >
+                    Cash
+                  </button>
+                  <button
+                    onClick={() => setSelectedPaymentMode('Razorpay')}
+                    className={`flex-1 px-4 py-3 rounded-xl border-2 font-semibold text-sm transition
+                      ${selectedPaymentMode === 'Razorpay'
+                        ? 'bg-[#3D52A0] text-white border-[#3D52A0]'
+                        : 'bg-white text-[#8697C4] border-[#EDE8F5] hover:border-[#7091E6]'
+                      }`}
+                  >
+                    Razorpay
+                  </button>
+                </div>
+              </div>
+
+              {/* Info note for Razorpay */}
+              {selectedPaymentMode === 'Razorpay' && (
+                <div className="flex items-start gap-2 bg-blue-50 
+                                rounded-xl p-3 border border-blue-200">
+                  <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-600">
+                    You'll be redirected to Razorpay's secure checkout. 
+                    Make sure to complete the verification.
+                  </p>
+                </div>
+              )}
+
+              {/* Info note for Cash */}
+              {selectedPaymentMode === 'Cash' && (
+                <div className="flex items-start gap-2 bg-green-50 
+                                rounded-xl p-3 border border-green-200">
+                  <Info className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-green-600">
+                    Please pay at the counter. Your attendant will confirm receipt.
+                  </p>
+                </div>
+              )}
+
+              {/* Payment button */}
+              <button
+                onClick={handlePaymentNow}
+                disabled={paying}
+                className="w-full bg-[#3D52A0] hover:bg-[#7091E6] disabled:opacity-50
+                           text-white font-semibold py-3 rounded-xl transition
+                           flex items-center justify-center gap-2"
+              >
+                {paying ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full 
+                                    border-2 border-white/30 border-t-white" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4" />
+                    Pay {formatCurrency(payment?.amount || booking?.totalAmount)} via {selectedPaymentMode}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -670,18 +863,26 @@ function PaymentSection({ booking, lotName, onPaymentSuccess }) {
           // ─── Step 3: On payment success, verify with backend ────────
           handler: async function (response) {
             try {
-              const verifyRes = await verifyRazorpayPayment({
+              // Create a timeout promise (10 seconds)
+              const verifyPromise = verifyRazorpayPayment({
                 paymentId: paymentId,
                 razorpayOrderId: response.razorpay_order_id,
                 razorpayPaymentId: response.razorpay_payment_id,
                 razorpaySignature: response.razorpay_signature,
                 mode: selectedMode,
               });
+
+              const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Payment verification timeout - please check your payment status in a moment')), 10000)
+              );
+
+              const verifyRes = await Promise.race([verifyPromise, timeoutPromise]);
               toast.success('Payment successful! 🎉');
               onPaymentSuccess(verifyRes.data);
             } catch (err) {
-              const msg = err.response?.data?.message || 'Payment verification failed.';
+              const msg = err.response?.data?.message || err.message || 'Payment verification failed.';
               toast.error(msg);
+              setPaying(false);
             }
           },
 

@@ -73,6 +73,4 @@ export const refundPayment = (paymentId) =>
   axiosInstance.post(`/api/v1/payments/${paymentId}/refund`);
 
 export const downloadReceipt = (paymentId) =>
-  axiosInstance.get(`/api/v1/payments/${paymentId}/receipt`, {
-    responseType: "blob",
-  });
+  axiosInstance.get(`/api/v1/payments/${paymentId}/receipt`);

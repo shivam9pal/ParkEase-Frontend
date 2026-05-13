@@ -42,6 +42,27 @@ export const getPendingLots = () => {
 };
 
 /**
+ * Get a parking lot by ID
+ * @param {string} lotId - Lot UUID
+ * @returns Promise<AxiosResponse> with LotResponse
+ */
+export const getLotById = (lotId) => {
+  logger.log("📤 Fetching lot details:", lotId);
+  return axiosInstance
+    .get(`/api/v1/lots/${lotId}`)
+    .then((res) => {
+      logger.log("✅ getLotById successful:", res.data?.id ?? lotId);
+      return res;
+    })
+    .catch((err) => {
+      logger.error("❌ getLotById failed:", err.message);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
+      throw err;
+    });
+};
+
+/**
  * Approve a parking lot (changes isApproved from false to true)
  * @param {string} lotId - Lot UUID
  * @returns Promise<AxiosResponse> with LotResponse (isApproved=true)
@@ -56,6 +77,28 @@ export const approveLot = (lotId) => {
     })
     .catch((err) => {
       logger.error("❌ Approve lot failed:", err.message);
+      logger.error("  Status:", err.response?.status);
+      logger.error("  Data:", err.response?.data);
+      throw err;
+    });
+};
+
+/**
+ * Reject a parking lot with reason
+ * @param {string} lotId - Lot UUID
+ * @param {string} reason - Rejection reason
+ * @returns Promise<AxiosResponse> with updated LotResponse
+ */
+export const rejectLot = (lotId, reason) => {
+  logger.log("📤 Rejecting parking lot:", lotId);
+  return axiosInstance
+    .put(`/api/v1/lots/${lotId}/reject`, { reason })
+    .then((res) => {
+      logger.log("✅ Lot rejected successfully:", res.data);
+      return res;
+    })
+    .catch((err) => {
+      logger.error("❌ Reject lot failed:", err.message);
       logger.error("  Status:", err.response?.status);
       logger.error("  Data:", err.response?.data);
       throw err;

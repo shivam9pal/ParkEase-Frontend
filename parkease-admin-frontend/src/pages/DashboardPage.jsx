@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { getPlatformSummary, getPlatformRevenueTrend, getPlatformOccupancy } from "../api/analyticsApi";
 import { formatCurrency, formatDate, formatPercent } from "../utils/formatters";
+import { buildAnalyticsErrorDisplay, logAnalyticsError, getSupportMessage } from "../utils/errorHandler";
 import logger from "../utils/logger";
 import StatCard from "../components/shared/StatCard";
 import PageHeader from "../components/shared/PageHeader";
@@ -172,7 +173,10 @@ export default function DashboardPage() {
       logger.log("📊 Transformed Occupancy:", transformedOccupancy);
     } catch (err) {
       logger.error("❌ Dashboard fetch error:", err);
-      toast.error("Failed to load dashboard data");
+      const errorMessage = buildAnalyticsErrorDisplay(err);
+      const supportInfo = getSupportMessage(err.response?.data);
+      const displayMessage = supportInfo ? `${errorMessage}\n${supportInfo}` : errorMessage;
+      toast.error(displayMessage);
     } finally {
       setLoading(false);
     }

@@ -7,6 +7,7 @@ import { Eye, EyeOff, ParkingMeter, AlertCircle, Lock, Mail } from "lucide-react
 import { useAuthStore } from "../store/authStore";
 import { adminLogin } from "../api/authApi";
 import logger from "../utils/logger";
+import { isErrorCode, getErrorMessage } from "../utils/errorHandler";
 
 const loginSchema = z.object({
   email: z
@@ -68,25 +69,22 @@ export default function LoginPage() {
       logger.error("  Data:", err.response?.data);
       logger.error("  Message:", err.message);
       
-      const msg = err.response?.data?.message || err.response?.data || err.message || "";
-      const msgStr = typeof msg === "string" ? msg : JSON.stringify(msg);
-      
-      // Check for deactivated account (401 status with "deactivated" in message)
-      if (
-        err.response?.status === 401 &&
-        msgStr.toLowerCase().includes("deactivated")
-      ) {
-        setServerError(
-          "Your account has been deactivated. Please contact a Super Admin to reactivate your account."
-        );
-      } else if (err.response?.status === 401) {
-        setServerError("Invalid email or password. Please try again.");
-      } else if (err.response?.status === 404) {
-        setServerError("Admin account not found. Please verify your credentials.");
-      } else if (err.response?.status === 403) {
-        setServerError("Admin login forbidden. Please contact support.");
+      // Use error codes for proper error handling
+      if (isErrorCode(err, "ACCOUNT_INACTIVE")) {
+        setServerError("Your account has been deactivated. Please contact a Super Admin to reactivate your account.");
+      } else if (isErrorCode(err, "ADMIN_INACTIVE")) {
+        setServerError("Admin account is inactive. Please contact support.");
+      } else if (isErrorCode(err, "INVALID_CREDENTIALS")) {
+        setServerError(getErrorMessage("INVALID_CREDENTIALS"));
+      } else if (isErrorCode(err, "ADMIN_NOT_FOUND")) {
+        setServerError(getErrorMessage("ADMIN_NOT_FOUND"));
+      } else if (isErrorCode(err, "EMAIL_NOT_VERIFIED")) {
+        setServerError(getErrorMessage("EMAIL_NOT_VERIFIED"));
       } else {
-        setServerError(`Login failed: ${err.message || "Unknown error"}`);
+        // Fallback: use error message from response or generic fallback
+        const errorCode = err.response?.data?.errorCode;
+        const errorMsg = errorCode ? getErrorMessage(errorCode) : (err.message || "Login failed. Please try again.");
+        setServerError(errorMsg);
       }
     } finally {
       setLoading(false);

@@ -48,8 +48,19 @@ export default function PublicLotDetailPage() {
         ]);
         setLot(lotRes.data);
         setSpots(spotsRes.data);
-      } catch {
-        setError('Failed to load lot details. Please try again.');
+      } catch (err) {
+        const status = err.response?.status;
+        const msg = err.response?.data?.message ?? '';
+        
+        if (status === 404) {
+          setError('Parking lot not found.');
+        } else if (status === 403) {
+          setError('You do not have permission to view this parking lot.');
+        } else if (status === 400) {
+          setError(msg || 'Invalid request.');
+        } else {
+          setError(msg || 'Failed to load lot details. Please try again.');
+        }
       } finally {
         setLoading(false);
       }

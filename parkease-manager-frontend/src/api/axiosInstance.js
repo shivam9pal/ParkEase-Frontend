@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import logger from '../utils/logger';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL, // http://localhost:8080
@@ -19,6 +20,31 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Log new requestId format (from GlobalExceptionHandler)
+    const requestId = error.response?.data?.requestId;
+    if (requestId) {
+      logger.log(`📍 Request ID: ${requestId}`);
+    }
+
+    // Fallback: Log old correlationId format (legacy support)
+    const correlationId = error.response?.data?.correlationId;
+    if (correlationId) {
+      logger.log(`📍 Correlation ID: ${correlationId}`);
+    }
+
+    // Log old errorCode format (legacy support)
+    const errorCode = error.response?.data?.errorCode;
+    if (errorCode) {
+      logger.log(`❌ Error Code: ${errorCode}`);
+    }
+
+    // Log path and method for debugging
+    const path = error.config?.url;
+    const method = error.config?.method?.toUpperCase();
+    if (path && error.response?.status) {
+      logger.error(`❌ ${method} ${path} failed with status ${error.response.status}`);
+    }
+
     if (error.response?.status === 401) {
       // Don't auto-redirect if this is a login request
       // (let the login form handle auth errors)

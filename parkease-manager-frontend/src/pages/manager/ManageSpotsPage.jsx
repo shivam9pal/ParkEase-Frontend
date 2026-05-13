@@ -128,7 +128,9 @@ export default function ManageSpotsPage() {
       setBulkLoading(false);
       setBulkProgress(null);
       const msg = err.response?.data?.message || 'Failed to add spots';
-      toast.error(`❌ ${msg}`);
+      const errorId = err.response?.data?.errorId;
+      const displayMsg = errorId ? `${msg} (ID: ${errorId})` : msg;
+      toast.error(`❌ ${displayMsg}`);
     }
   };
 

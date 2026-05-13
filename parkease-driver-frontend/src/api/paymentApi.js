@@ -43,6 +43,6 @@ export const getPaymentStatus = (paymentId) =>
 
 // GET /api/v1/payments/{paymentId}/receipt
 // Role: DRIVER (own only), ADMIN
-// Response: PDF blob
+// Response: Either JSON (with S3 URL) or PDF blob
 export const downloadReceipt = (paymentId) =>
-  api.get(`/api/v1/payments/${paymentId}/receipt`, { responseType: 'blob' });
+  api.get(`/api/v1/payments/${paymentId}/receipt`);

@@ -9,6 +9,7 @@ import {
 import { getAllAdmins, createAdmin, deleteAdmin, reactivateAdmin } from "../api/authApi";
 import { formatDateTime, truncateId } from "../utils/formatters";
 import logger from "../utils/logger";
+import { isErrorCode, getErrorMessage } from "../utils/errorHandler";
 import PageHeader from "../components/shared/PageHeader";
 import DataTable from "../components/shared/DataTable";
 import Badge from "../components/shared/Badge";
@@ -54,11 +55,17 @@ function CreateAdminPanel({ onClose, onCreated }) {
       reset();
       onClose();
     } catch (err) {
-      const msg = err.response?.data?.message || "";
-      if (msg.toLowerCase().includes("already exists")) {
-        setServerError("An admin with this email already exists.");
+      // Use error codes if available
+      if (isErrorCode(err, "ADMIN_EXISTS")) {
+        setServerError(getErrorMessage("ADMIN_EXISTS"));
+      } else if (isErrorCode(err, "INVALID_ADMIN_PASSWORD")) {
+        setServerError(getErrorMessage("INVALID_ADMIN_PASSWORD"));
+      } else if (isErrorCode(err, "UNAUTHORIZED")) {
+        setServerError(getErrorMessage("FORBIDDEN"));
       } else {
-        setServerError("Failed to create admin. Please try again.");
+        // Fallback to response message
+        const msg = err.response?.data?.message || "Failed to create admin. Please try again.";
+        setServerError(msg);
       }
     } finally {
       setLoading(false);

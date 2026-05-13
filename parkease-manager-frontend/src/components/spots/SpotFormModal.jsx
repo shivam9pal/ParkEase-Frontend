@@ -89,10 +89,15 @@ export default function SpotFormModal({
       }
       onSuccess(res.data);
     } catch (err) {
-      if (err.response?.status === 403) {
+      const errorCode = err.response?.data?.code;
+      const status = err.response?.status;
+
+      if (status === 403) {
         toast.error('You can only manage spots in your own lots.');
-      } else if (err.response?.status === 409) {
+      } else if (errorCode === 'DUPLICATE_SPOT_NUMBER' || status === 400) {
         toast.error(`Spot number "${data.spotNumber}" already exists in this lot.`);
+      } else if (status === 409) {
+        toast.error(`Spot number "${data.spotNumber}" is in invalid state.`);
       } else {
         toast.error(`Failed to ${isEdit ? 'update' : 'create'} spot.`);
       }

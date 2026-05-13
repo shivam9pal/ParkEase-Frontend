@@ -87,10 +87,17 @@ export default function LotDetailPage() {
         }
       }
     } catch (err) {
-      if (err.response?.status === 404) {
+      const status = err.response?.status;
+      const msg = err.response?.data?.message ?? '';
+      
+      if (status === 404) {
         setError('Parking lot not found.');
+      } else if (status === 403) {
+        setError('You do not have permission to view this parking lot.');
+      } else if (status === 400) {
+        setError(msg || 'Invalid request. Please try again.');
       } else {
-        setError('Failed to load lot details. Please try again.');
+        setError(msg || 'Failed to load lot details. Please try again.');
       }
     } finally {
       setLoading(false);

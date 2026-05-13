@@ -52,9 +52,9 @@ const vehicleSchema = z.object({
     .max(20, 'Plate number too long')
     .regex(/^[A-Z0-9]+$/, 'Only uppercase letters and numbers allowed'),
   vehicleType: z.enum(['TWO_WHEELER', 'FOUR_WHEELER', 'HEAVY']),
-  brand: z.string().max(50, 'Brand too long').optional().or(z.literal('')),
-  model: z.string().max(50, 'Model too long').optional().or(z.literal('')),
-  color: z.string().max(30, 'Color too long').optional().or(z.literal('')),
+  brand: z.string().min(1, 'Brand is required').max(50, 'Brand too long'),
+  model: z.string().min(1, 'Model is required').max(50, 'Model too long'),
+  color: z.string().min(1, 'Color is required').max(30, 'Color too long'),
   isEV:  z.boolean(),
 });
 
@@ -76,7 +76,9 @@ export default function MyVehiclesPage() {
     defaultValues: {
       vehiclePlate: '',
       vehicleType:  'FOUR_WHEELER',
-      brand: '', model: '', color: '',
+      brand: '',
+      model: '',
+      color: '',
       isEV: false,
     },
   });
@@ -149,9 +151,9 @@ export default function MyVehiclesPage() {
       const payload = {
         vehiclePlate: data.vehiclePlate,
         vehicleType:  data.vehicleType,
-        brand:  data.brand  || undefined,
-        model:  data.model  || undefined,
-        color:  data.color  || undefined,
+        brand:  data.brand,
+        model:  data.model,
+        color:  data.color,
         isEV:   data.isEV,
       };
 
@@ -409,8 +411,8 @@ export default function MyVehiclesPage() {
                 <div>
                   <label className="form-label">
                     Brand
-                    <span className="text-[#8697C4] font-normal ml-1">
-                      (opt)
+                    <span className="text-red-500 font-normal ml-1">
+                      *
                     </span>
                   </label>
                   <div className="relative">
@@ -420,15 +422,19 @@ export default function MyVehiclesPage() {
                       type="text"
                       placeholder="Toyota"
                       {...register('brand')}
-                      className="form-input pl-9"
+                      className={`form-input pl-9
+                                  ${errors.brand ? 'border-red-400 focus:ring-red-300' : ''}`}
                     />
                   </div>
+                  {errors.brand && (
+                    <p className="form-error">{errors.brand.message}</p>
+                  )}
                 </div>
                 <div>
                   <label className="form-label">
                     Model
-                    <span className="text-[#8697C4] font-normal ml-1">
-                      (opt)
+                    <span className="text-red-500 font-normal ml-1">
+                      *
                     </span>
                   </label>
                   <div className="relative">
@@ -438,15 +444,19 @@ export default function MyVehiclesPage() {
                       type="text"
                       placeholder="Fortuner"
                       {...register('model')}
-                      className="form-input pl-9"
+                      className={`form-input pl-9
+                                  ${errors.model ? 'border-red-400 focus:ring-red-300' : ''}`}
                     />
                   </div>
+                  {errors.model && (
+                    <p className="form-error">{errors.model.message}</p>
+                  )}
                 </div>
                 <div>
                   <label className="form-label">
                     Color
-                    <span className="text-[#8697C4] font-normal ml-1">
-                      (opt)
+                    <span className="text-red-500 font-normal ml-1">
+                      *
                     </span>
                   </label>
                   <div className="relative">
@@ -456,9 +466,13 @@ export default function MyVehiclesPage() {
                       type="text"
                       placeholder="Silver"
                       {...register('color')}
-                      className="form-input pl-9"
+                      className={`form-input pl-9
+                                  ${errors.color ? 'border-red-400 focus:ring-red-300' : ''}`}
                     />
                   </div>
+                  {errors.color && (
+                    <p className="form-error">{errors.color.message}</p>
+                  )}
                 </div>
               </div>
 

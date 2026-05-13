@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import logger from '../utils/logger';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -19,6 +20,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Log correlation ID and error code if available
+    const correlationId = error.response?.data?.correlationId;
+    if (correlationId) {
+      logger.log(`📍 Error Reference ID: ${correlationId}`);
+    }
+    const errorCode = error.response?.data?.errorCode;
+    if (errorCode) {
+      logger.log(`❌ Error Code: ${errorCode}`);
+    }
+
     if (error.response?.status === 401) {
       const requestUrl = error.config?.url ?? '';
       const isLoginRequest = requestUrl.includes('/api/v1/auth/login');

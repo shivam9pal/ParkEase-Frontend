@@ -3,6 +3,7 @@ import { Users, UserCheck, UserX, RefreshCw } from "lucide-react";
 import { getAllUsers, deactivateUser, reactivateUser } from "../api/userApi";
 import { formatDateTime, truncateId } from "../utils/formatters";
 import logger from "../utils/logger";
+import { getErrorMessage } from "../utils/errorHandler";
 import PageHeader from "../components/shared/PageHeader";
 import DataTable from "../components/shared/DataTable";
 import Badge from "../components/shared/Badge";
@@ -64,6 +65,12 @@ export default function UserManagementPage() {
       }
     } catch (err) {
       logger.error("❌ User fetch error:", err.message);
+      // Add correlation ID if available for debugging
+      const correlationId = err.response?.data?.correlationId;
+      const errorCode = err.response?.data?.errorCode;
+      if (correlationId) {
+        logger.log(`📍 Error Reference ID: ${correlationId}`);
+      }
       toast.error("Failed to load users");
     } finally {
       setLoading(false);
@@ -112,8 +119,10 @@ export default function UserManagementPage() {
             : u
         )
       );
-    } catch {
-      toast.error(`Failed to ${confirm.action} user`);
+    } catch (err) {
+      const errorCode = err.response?.data?.errorCode;
+      const errorMsg = errorCode ? getErrorMessage(errorCode) : `Failed to ${confirm.action} user`;
+      toast.error(errorMsg);
     } finally {
       setActionLoading(false);
       setConfirm({ open: false, userId: null, action: null, userName: "" });

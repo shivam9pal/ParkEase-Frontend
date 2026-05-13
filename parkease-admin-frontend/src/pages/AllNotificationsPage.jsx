@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Trash2, RefreshCw } from "lucide-react";
 import { getAllNotifications, deleteNotification } from "../api/notificationApi";
 import { formatDateTime, truncateId } from "../utils/formatters";
+import { buildNotificationErrorDisplay, getStatusCode } from "../utils/errorHandler";
 import PageHeader from "../components/shared/PageHeader";
 import DataTable from "../components/shared/DataTable";
 import Badge from "../components/shared/Badge";
@@ -70,8 +71,20 @@ export default function AllNotificationsPage() {
       const res = await getAllNotifications();
       const data = res.data ?? [];
       setNotifications(Array.isArray(data) ? data : []);
-    } catch {
-      toast.error("Failed to load notifications");
+    } catch (err) {
+      const status = getStatusCode(err);
+      const errorMsg = buildNotificationErrorDisplay(err);
+      
+      if (status === 503) {
+        toast.error(errorMsg + " — Please try again later");
+      } else if (status === 403) {
+        toast.error("You don't have permission to view notifications");
+      } else if (status === 404) {
+        setNotifications([]);
+        toast.info("No notifications found");
+      } else {
+        toast.error(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -105,8 +118,18 @@ export default function AllNotificationsPage() {
         prev.filter((n) => n.notificationId !== notificationId)
       );
       toast.success("Notification deleted");
-    } catch {
-      toast.error("Failed to delete notification");
+    } catch (err) {
+      const status = getStatusCode(err);
+      const errorMsg = buildNotificationErrorDisplay(err);
+      
+      if (status === 404) {
+        toast.error("Notification not found");
+        fetchNotifications();
+      } else if (status === 403) {
+        toast.error("You don't have permission to delete this notification");
+      } else {
+        toast.error(errorMsg);
+      }
     } finally {
       setDeletingId(null);
     }
@@ -136,9 +159,9 @@ export default function AllNotificationsPage() {
       key: "title",
       label: "Title",
       render: (row) => (
-        <div className="max-w-[200px]">
-          <p className="font-medium text-sm truncate">{row.title}</p>
-          <p className="text-xs text-secondary truncate">{row.message}</p>
+        <div className="max-w-xs">
+          <p className="font-medium text-sm whitespace-normal break-words">{row.title}</p>
+          <p className="text-xs text-secondary whitespace-normal break-words">{row.message}</p>
         </div>
       ),
     },

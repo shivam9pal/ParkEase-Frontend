@@ -15,6 +15,7 @@ import {
   getLotOccupancyTrend,
 } from "../api/analyticsApi";
 import { formatCurrency, formatDate, formatPercent } from "../utils/formatters";
+import { buildAnalyticsErrorDisplay } from "../utils/errorHandler";
 import logger from "../utils/logger";
 import PageHeader from "../components/shared/PageHeader";
 import StatCard from "../components/shared/StatCard";
@@ -108,7 +109,8 @@ export default function LotAnalyticsPage() {
         }
       } catch (err) {
         logger.error("❌ getAllLots error:", err);
-        toast.error("Failed to load parking lots");
+        const errorMessage = buildAnalyticsErrorDisplay(err);
+        toast.error(errorMessage);
       } finally {
         setLotsLoading(false);
       }
@@ -183,7 +185,8 @@ export default function LotAnalyticsPage() {
       logger.log("📉 Occupancy:", transformedOccupancy);
     } catch (err) {
       logger.error("❌ Lot analytics error:", err);
-      toast.error("Failed to load lot analytics");
+      const errorMessage = buildAnalyticsErrorDisplay(err);
+      toast.error(errorMessage);
     } finally {
       setDataLoading(false);
     }

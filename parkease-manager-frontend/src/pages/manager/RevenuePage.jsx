@@ -18,6 +18,7 @@ import {
   getLotRevenue, getDailyRevenue,
   getSpotTypeUtilisation, getAvgDuration, getPeakHours,
 } from '../../api/analyticsApi';
+import { buildAnalyticsErrorDisplay, getSupportMessage } from '../../utils/errorHandler';
 import LoadingSpinner    from '../../components/common/LoadingSpinner';
 import ErrorMessage      from '../../components/common/ErrorMessage';
 import PageHeader        from '../../components/common/PageHeader';
@@ -188,8 +189,11 @@ export default function RevenuePage() {
       setAvgDuration(avgDurRes.data);
       setPeakHours(peakRes.data ?? []);
 
-    } catch {
-      setError('Failed to load revenue data. Please try again.');
+    } catch (err) {
+      const errorMessage = buildAnalyticsErrorDisplay(err);
+      const supportInfo = getSupportMessage(err.response?.data);
+      const displayMessage = supportInfo ? `${errorMessage}\n${supportInfo}` : errorMessage;
+      setError(displayMessage);
     } finally {
       setLoading(false);
     }

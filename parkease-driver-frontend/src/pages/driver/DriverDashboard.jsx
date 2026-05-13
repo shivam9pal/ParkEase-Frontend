@@ -142,6 +142,15 @@ export default function DriverDashboard() {
         }
         if (notifRes.status === 'fulfilled') {
           setUnreadCount(notifRes.value.data.count ?? 0);
+        } else if (notifRes.status === 'rejected') {
+          // Handle notification fetch errors gracefully
+          const err = notifRes.reason;
+          const status = err.response?.status;
+          if (status === 503) {
+            console.warn('Notification service temporarily unavailable');
+          }
+          // Keep unread count at 0 as fallback
+          setUnreadCount(0);
         }
       } catch {
         setError('Failed to load dashboard data. Please refresh.');

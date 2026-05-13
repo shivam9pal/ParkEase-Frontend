@@ -7,6 +7,7 @@ import {
   Info, CheckCircle2, Send,
 } from "lucide-react";
 import { sendBroadcast } from "../api/notificationApi";
+import { getStatusCode, getValidationErrors, buildNotificationErrorDisplay } from "../utils/errorHandler";
 import PageHeader from "../components/shared/PageHeader";
 import { toast } from "../store/notificationStore";
 
@@ -116,8 +117,32 @@ export default function BroadcastPage() {
         reset({ targetRole: "", title: "", message: "" });
       }
     } catch (err) {
-      const msg = err.response?.data?.message || "Failed to send broadcast";
-      toast.error(msg);
+      const status = getStatusCode(err);
+      const validationErrors = getValidationErrors(err);
+      
+      // Handle validation errors (400)
+      if (status === 400 && Object.keys(validationErrors).length > 0) {
+        Object.entries(validationErrors).forEach(([field, message]) => {
+          toast.error(`${field}: ${message}`);
+        });
+      } 
+      // Handle partial success (207)
+      else if (status === 207) {
+        const data = err.response?.data;
+        toast.warning(
+          `Broadcast sent to ${data.channelsSucceeded} channel(s), ` +
+          `${data.channelsFailed} failed: ${data.message}`
+        );
+      }
+      // Handle service unavailable (503)
+      else if (status === 503) {
+        toast.error("Service temporarily unavailable. Please try again later.");
+      }
+      // Generic error message
+      else {
+        const msg = buildNotificationErrorDisplay(err);
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }

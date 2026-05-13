@@ -40,7 +40,7 @@ const FEATURES = [
   {
     icon: Shield,
     title: 'Secure & Reliable',
-    desc: 'JWT-secured accounts, atomic spot booking to prevent double-booking.',
+    desc: ' Atomic spot booking to prevent double-booking.',
     color: 'bg-red-50 text-red-500',
   },
 ];
@@ -73,13 +73,7 @@ const STEPS = [
   },
 ];
 
-// ── Stats ─────────────────────────────────────────────────────────────────────
-const STATS = [
-  { value: '500+', label: 'Parking Lots' },
-  { value: '50K+', label: 'Happy Drivers' },
-  { value: '1M+',  label: 'Bookings Done' },
-  { value: '4.8★', label: 'Driver Rating' },
-];
+
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -223,26 +217,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Stats Bar ──────────────────────────────────────────────────────── */}
-      <section className="bg-white border-b border-[#ADBBDA]">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <div className="grid grid-cols-2 md:grid-cols-4 divide-x 
-                          divide-[#EDE8F5]">
-            {STATS.map(({ value, label }) => (
-              <div key={label}
-                className="flex flex-col items-center justify-center 
-                           py-8 px-4 text-center">
-                <span className="text-3xl font-black text-[#3D52A0]">
-                  {value}
-                </span>
-                <span className="text-sm text-[#8697C4] font-medium mt-1">
-                  {label}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       {/* ── Features Section ───────────────────────────────────────────────── */}
       <section className="py-20 bg-[#EDE8F5]">

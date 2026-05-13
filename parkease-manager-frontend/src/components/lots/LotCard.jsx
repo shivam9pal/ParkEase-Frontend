@@ -30,8 +30,17 @@ export default function LotCard({ lot, onEdit, onDeleted, onUpdated }) {
       const res = await toggleLotOpen(lot.lotId);
       onUpdated(res.data);
       toast.success(res.data.isOpen ? 'Lot opened ✅' : 'Lot closed 🔒');
-    } catch {
-      toast.error('Failed to toggle lot status.');
+    } catch (err) {
+      if (err.response?.status === 403) {
+        toast.error('You can only toggle your own lots.');
+      } else if (err.response?.status === 404) {
+        toast.error('Parking lot not found.');
+      } else if (err.response?.status === 409) {
+        toast.error('Cannot toggle lot at this time. Please try again.');
+      } else {
+        const msg = err.response?.data?.message ?? '';
+        toast.error(msg || 'Failed to toggle lot status.');
+      }
     } finally {
       setToggling(false);
     }
@@ -47,8 +56,11 @@ export default function LotCard({ lot, onEdit, onDeleted, onUpdated }) {
     } catch (err) {
       if (err.response?.status === 403) {
         toast.error('You can only delete your own lots.');
+      } else if (err.response?.status === 404) {
+        toast.error('Parking lot not found.');
       } else {
-        toast.error('Failed to delete lot. It may have active bookings.');
+        const msg = err.response?.data?.message ?? '';
+        toast.error(msg || 'Failed to delete lot. It may have active bookings.');
       }
     } finally {
       setDeleting(false);

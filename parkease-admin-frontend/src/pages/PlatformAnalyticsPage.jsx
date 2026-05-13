@@ -15,6 +15,7 @@ import {
 } from "../api/analyticsApi";
 import { getPlatformRevenue } from "../api/paymentApi";
 import { formatCurrency, formatDate, formatPercent } from "../utils/formatters";
+import { buildAnalyticsErrorDisplay } from "../utils/errorHandler";
 import PageHeader from "../components/shared/PageHeader";
 import StatCard from "../components/shared/StatCard";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
@@ -141,8 +142,9 @@ export default function PlatformAnalyticsPage() {
       setRevenueTrend(Array.isArray(revenueData) ? revenueData : []);
       setOccupancy(Array.isArray(occupancyData) ? occupancyData : []);
       setRevenueDetails(revenueDetailRes.data);
-    } catch {
-      toast.error("Failed to load analytics data");
+    } catch (err) {
+      const errorMessage = buildAnalyticsErrorDisplay(err);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -161,8 +163,9 @@ export default function PlatformAnalyticsPage() {
       setRevenueTrend(Array.isArray(revenueData) ? revenueData : []);
       setOccupancy(Array.isArray(occupancyData) ? occupancyData : []);
       setRevenueDetails(revenueDetailRes.data);
-    } catch {
-      toast.error("Failed to refresh chart data");
+    } catch (err) {
+      const errorMessage = buildAnalyticsErrorDisplay(err);
+      toast.error(errorMessage);
     } finally {
       setChartLoading(false);
     }

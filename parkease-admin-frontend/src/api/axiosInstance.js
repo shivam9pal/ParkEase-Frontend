@@ -23,10 +23,29 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ── Response Interceptor: handle 401 globally ────────────────────────────────
+// ── Response Interceptor: handle 401 globally + log request IDs ────────
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Log new requestId format (from GlobalExceptionHandler)
+    const requestId = error.response?.data?.requestId;
+    if (requestId) {
+      logger.log(`📍 Request ID: ${requestId}`);
+    }
+
+    // Fallback: Log old correlationId format (legacy support)
+    const correlationId = error.response?.data?.correlationId;
+    if (correlationId) {
+      logger.log(`📍 Correlation ID: ${correlationId}`);
+    }
+
+    // Log path and method for debugging
+    const path = error.config?.url;
+    const method = error.config?.method?.toUpperCase();
+    if (path) {
+      logger.error(`❌ ${method} ${path} failed with status ${error.response?.status}`);
+    }
+    
     // Don't redirect on 401 for login endpoint - let LoginPage handle it
     const isLoginRequest = error.config?.url?.includes("/auth/admin/login");
     

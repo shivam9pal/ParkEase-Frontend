@@ -90,19 +90,18 @@ export default function PaymentHistoryPage() {
   const handleDownload = async (payment) => {
     setDownloading(payment.paymentId);
     try {
-      const res  = await downloadReceipt(payment.paymentId);
-      const blob = new Blob([res.data], { type: 'application/pdf' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `parkease-receipt-${
-        (payment.paymentId ?? 'UNKNOWN').slice(-8).toUpperCase()
-      }.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success('Receipt downloaded! 📄');
+      // Backend now always returns S3 URL (synchronous upload)
+      // No more PDF bytes handling
+      const res = await downloadReceipt(payment.paymentId);
+      const { s3Url } = res.data;
+
+      if (s3Url) {
+        // ─── Open S3 URL in new tab ──────────────────────────────────────
+        window.open(s3Url, '_blank');
+        toast.success('Opening receipt from S3... 📄');
+      } else {
+        toast.error('No receipt URL found');
+      }
     } catch {
       toast.error('Download failed. Please try again.');
     } finally {
@@ -381,6 +380,24 @@ function PaymentCard({ payment, lotName, downloading, onDownload, onViewBooking 
   const mode   = MODE_CONFIG[payment.mode] ?? 
                  { bg: 'bg-gray-100', text: 'text-gray-600', label: payment.mode };
   const isPaid = payment.status === 'PAID';
+  
+  // Determine status label and styling based on actual payment status
+  const getStatusDisplay = () => {
+    switch (payment.status) {
+      case 'PAID':
+        return { label: '✓ Paid', bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' };
+      case 'REFUNDED':
+        return { label: '↩ Refunded', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' };
+      case 'PENDING':
+        return { label: '⏳ Pending', bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' };
+      case 'FAILED':
+        return { label: '❌ Failed', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
+      default:
+        return { label: payment.status, bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' };
+    }
+  };
+  
+  const statusDisplay = getStatusDisplay();
 
   return (
     <div className="card hover:shadow-card-hover transition-all duration-200">
@@ -406,11 +423,8 @@ function PaymentCard({ payment, lotName, downloading, onDownload, onViewBooking 
               </h3>
               <span className={`text-xs font-semibold px-2.5 py-0.5 
                                rounded-full border
-                               ${isPaid
-                                 ? 'bg-green-50 text-green-700 border-green-200'
-                                 : 'bg-amber-50 text-amber-700 border-amber-200'
-                               }`}>
-                {isPaid ? '✓ Paid' : '↩ Refunded'}
+                               ${statusDisplay.bg} ${statusDisplay.text} ${statusDisplay.border}`}>
+                {statusDisplay.label}
               </span>
               <span className={`text-xs font-semibold px-2.5 py-0.5 
                                rounded-full ${mode.bg} ${mode.text}`}>
@@ -437,8 +451,8 @@ function PaymentCard({ payment, lotName, downloading, onDownload, onViewBooking 
           {/* Amount */}
           <div className="text-right">
             <p className={`text-xl font-black
-                          ${isPaid ? 'text-[#3D52A0]' : 'text-amber-600'}`}>
-              {isPaid ? '' : '-'}{formatCurrency(payment.amount)}
+                          ${isPaid ? 'text-[#3D52A0]' : payment.status === 'REFUNDED' ? 'text-orange-600' : 'text-gray-600'}`}>
+              {payment.status === 'REFUNDED' ? '-' : ''}{formatCurrency(payment.amount)}
             </p>
             {payment.refundedAt && (
               <p className="text-xs text-[#8697C4] mt-0.5">
